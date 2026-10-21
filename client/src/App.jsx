@@ -203,25 +203,37 @@ export default function App() {
     }
   }[lang];
 
-  // Filter records
+  // Filter records with multi-field search (Crop, Mandi, District, Variety)
   const filteredRecords = records.filter(record => {
-    if (selectedCropId !== 'all' && record.commodity_id !== selectedCropId) {
+    const q = searchQuery.trim().toLowerCase();
+
+    // 1. Crop filter pill (only restrict when not searching manually)
+    if (!q && selectedCropId !== 'all' && record.commodity_id !== selectedCropId) {
       return false;
     }
 
-    if (searchQuery.trim()) {
-      const match = findCropByQuery(searchQuery);
-      if (match && record.commodity_id === match.id) {
-        return true;
-      }
-      const q = searchQuery.toLowerCase();
-      const inHi = (record.commodity_hi || '').toLowerCase().includes(q) || (record.market_hi || '').toLowerCase().includes(q);
-      const inEn = (record.commodity_en || '').toLowerCase().includes(q) || (record.market_en || '').toLowerCase().includes(q);
-      const inVariety = (record.variety || '').toLowerCase().includes(q);
-      return inHi || inEn || inVariety;
+    if (!q) return true;
+
+    // Direct text matching across all relevant fields
+    const inCommodityHi = (record.commodity_hi || '').toLowerCase().includes(q);
+    const inCommodityEn = (record.commodity_en || '').toLowerCase().includes(q);
+    const inMarketHi = (record.market_hi || '').toLowerCase().includes(q);
+    const inMarketEn = (record.market_en || '').toLowerCase().includes(q);
+    const inDistrict = (record.district || '').toLowerCase().includes(q);
+    const inState = (record.state || '').toLowerCase().includes(q);
+    const inVariety = (record.variety || '').toLowerCase().includes(q);
+
+    if (inCommodityHi || inCommodityEn || inMarketHi || inMarketEn || inDistrict || inState || inVariety) {
+      return true;
     }
 
-    return true;
+    // Phonetic & Alias dictionary match (e.g. "gehu" -> wheat, "aloo" -> potato)
+    const cropMatch = findCropByQuery(q);
+    if (cropMatch && record.commodity_id === cropMatch.id) {
+      return true;
+    }
+
+    return false;
   });
 
   const handleToggleCompare = (record) => {

@@ -7,7 +7,7 @@ export const CROP_DICTIONARY = [
     name_en: 'Wheat',
     icon: '🌾',
     msp: 2275,
-    aliases: ['gehu', 'gehun', 'gehoon', 'gehun', 'wheat', 'गेहूं', 'गेहू', 'गेहु']
+    aliases: ['gehu', 'gehun', 'gehoon', 'wheat', 'गेहूं', 'गेहू', 'गेहु']
   },
   {
     id: 'mustard',
@@ -31,7 +31,7 @@ export const CROP_DICTIONARY = [
     name_en: 'Gram / Chana',
     icon: '🥣',
     msp: 5440,
-    aliases: ['chana', 'gram', 'channa', 'चना', 'चना दाल', 'छोला']
+    aliases: ['chana', 'gram', 'channa', 'चना', 'छोला']
   },
   {
     id: 'onion',
@@ -40,16 +40,44 @@ export const CROP_DICTIONARY = [
     icon: '🧅',
     msp: null,
     aliases: ['pyaz', 'pyaj', 'kanda', 'onion', 'प्याज़', 'प्याज', 'कांदा']
+  },
+  {
+    id: 'potato',
+    name_hi: 'आलू',
+    name_en: 'Potato',
+    icon: '🥔',
+    msp: null,
+    aliases: ['alu', 'aloo', 'potato', 'आलू', 'आलु']
+  },
+  {
+    id: 'paddy',
+    name_hi: 'धान / चावल',
+    name_en: 'Paddy / Rice',
+    icon: '🍚',
+    msp: 2183,
+    aliases: ['dhan', 'chawal', 'paddy', 'rice', 'धान', 'चावल']
   }
 ];
 
 export function findCropByQuery(query) {
   if (!query || typeof query !== 'string') return null;
   const clean = query.trim().toLowerCase();
-  
-  return CROP_DICTIONARY.find(crop => 
-    crop.name_hi.toLowerCase().includes(clean) ||
-    crop.name_en.toLowerCase().includes(clean) ||
-    crop.aliases.some(alias => clean.includes(alias) || alias.includes(clean))
-  ) || null;
+  if (clean.length === 0) return null;
+
+  return CROP_DICTIONARY.find(crop => {
+    // 1. Direct name match
+    if (crop.name_en.toLowerCase() === clean || crop.name_hi.toLowerCase() === clean) {
+      return true;
+    }
+    // 2. Full word or starts-with match in names
+    if (clean.length >= 2 && (crop.name_en.toLowerCase().includes(clean) || crop.name_hi.toLowerCase().includes(clean))) {
+      return true;
+    }
+    // 3. Exact alias match or multi-character alias starts-with
+    return crop.aliases.some(alias => {
+      if (alias === clean) return true;
+      if (clean.length >= 3 && (alias.startsWith(clean) || clean.startsWith(alias))) return true;
+      return false;
+    });
+  }) || null;
 }

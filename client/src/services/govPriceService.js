@@ -17,9 +17,15 @@ const CROP_TRANSLATIONS = {
   'potato': 'आलू',
   'tomato': 'टमाटर',
   'maize': 'मक्का',
-  'paddy(common)': 'धान / चावल',
+  'paddy(common)': 'धान (चावल)',
+  'paddy(basmati)': 'बासमती धान',
   'cotton': 'कपास',
-  'garlic': 'लहसुन'
+  'garlic': 'लहसुन',
+  'turmeric': 'हल्दी',
+  'bajra(pearl millet/cumbu)': 'बाजरा',
+  'barley(jau)': 'जौ',
+  'green gram (moong)(whole)': 'मूंग दाल',
+  'black gram (urd beans)(whole)': 'उड़द दाल'
 };
 
 const MSP_MAP = {
@@ -31,10 +37,13 @@ const MSP_MAP = {
   'bengal gram(gram)(whole)': 5440,
   'maize': 2090,
   'paddy(common)': 2183,
-  'cotton': 6620
+  'paddy(basmati)': 2203,
+  'cotton': 6620,
+  'bajra(pearl millet/cumbu)': 2500,
+  'barley(jau)': 1850
 };
 
-export async function fetchLiveGovPrices({ state = 'Madhya Pradesh', limit = 60 } = {}) {
+export async function fetchLiveGovPrices({ state = 'Uttar Pradesh', limit = 100 } = {}) {
   const url = `${BASE_URL}/${RESOURCE_ID}?api-key=${GOV_API_KEY}&format=json&limit=${limit}&filters[state]=${encodeURIComponent(state)}`;
 
   try {
@@ -51,23 +60,26 @@ export async function fetchLiveGovPrices({ state = 'Madhya Pradesh', limit = 60 
     const normalizedRecords = data.records
       .filter(r => r.modal_price && Number(r.modal_price) > 0)
       .map((r, idx) => {
-        const commLower = (r.commodity || '').trim().toLowerCase();
-        const commHi = CROP_TRANSLATIONS[commLower] || r.commodity;
+        const commRaw = (r.commodity || '').trim();
+        const commLower = commRaw.toLowerCase();
+        const commHi = CROP_TRANSLATIONS[commLower] || commRaw;
         const mspVal = MSP_MAP[commLower] || null;
 
         // Extract commodity id
         let commId = 'other';
         if (commLower.includes('wheat') || commLower.includes('gehu')) commId = 'wheat';
         else if (commLower.includes('soya')) commId = 'soybean';
-        else if (commLower.includes('mustard') || commLower.includes('sarso')) commId = 'mustard';
+        else if (commLower.includes('mustard') || commLower.includes('sarso') || commLower.includes('rai')) commId = 'mustard';
         else if (commLower.includes('gram') || commLower.includes('chana')) commId = 'chana';
-        else if (commLower.includes('onion') || commLower.includes('pyaz')) commId = 'onion';
+        else if (commLower.includes('onion') || commLower.includes('pyaz') || commLower.includes('kanda')) commId = 'onion';
+        else if (commLower.includes('potato') || commLower.includes('alu') || commLower.includes('aloo')) commId = 'potato';
+        else if (commLower.includes('paddy') || commLower.includes('rice') || commLower.includes('dhan')) commId = 'paddy';
 
         return {
           id: `live_${idx}_${r.market}_${commLower}`,
           commodity_id: commId,
           commodity_hi: commHi,
-          commodity_en: r.commodity,
+          commodity_en: commRaw,
           variety: r.variety || 'सामान्य (Standard)',
           market_hi: `${r.market} मंडी`,
           market_en: `${r.market} Mandi`,
