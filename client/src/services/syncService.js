@@ -48,3 +48,20 @@ export function getRelativeTimeString(isoString, lang = 'hi') {
   const diffHours = Math.floor(diffMinutes / 60);
   return lang === 'hi' ? `${diffHours} घंटे पहले सिंक` : `Synced ${diffHours}h ago`;
 }
+
+export function saveUserPreference(key, value) {
+  try {
+    localStorage.setItem(`sahibhav_pref_${key}`, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`Failed to save preference ${key}:`, e);
+  }
+}
+
+export function getUserPreference(key, defaultValue = null) {
+  try {
+    const raw = localStorage.getItem(`sahibhav_pref_${key}`);
+    return raw ? JSON.parse(raw) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}

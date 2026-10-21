@@ -28,7 +28,14 @@ import {
   formatCityState,
   DEFAULT_STATE_CITIES
 } from './services/locationService.js';
-import { saveSyncedData, getCachedStateData, getLastSyncTime, getRelativeTimeString } from './services/syncService.js';
+import { 
+  saveSyncedData, 
+  getCachedStateData, 
+  getLastSyncTime, 
+  getRelativeTimeString,
+  saveUserPreference,
+  getUserPreference
+} from './services/syncService.js';
 
 const STATES = [
   'Uttar Pradesh',
@@ -55,18 +62,19 @@ const SIDEBAR_CROPS = [
 ];
 
 export default function App() {
-  const [lang, setLang] = useState('hi'); // 'hi' or 'en'
+  const [lang, setLang] = useState(() => getUserPreference('lang', 'hi')); // Persisted
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCropId, setSelectedCropId] = useState('wheat');
+  const [selectedCropId, setSelectedCropId] = useState(() => getUserPreference('crop', 'wheat')); // Persisted
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [isComparingModalOpen, setIsComparingModalOpen] = useState(false);
   const [dataMeta, setDataMeta] = useState(null);
   const [isSpeakingHeadline, setIsSpeakingHeadline] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
 
-  // Default to Uttar Pradesh / Lucknow as seen in reference mockup
-  const [selectedState, setSelectedState] = useState(() => getLastSavedState() || 'Uttar Pradesh');
+  // Persisted state / city
+  const [selectedState, setSelectedState] = useState(() => getUserPreference('state', getLastSavedState() || 'Uttar Pradesh'));
   const [userLocation, setUserLocation] = useState(() => {
     const saved = getLastSavedLocation();
     if (saved) return saved;
@@ -76,8 +84,39 @@ export default function App() {
     };
   });
   
-  const [dataSourceMode, setDataSourceMode] = useState('live'); // 'live' or 'offline'
+  const [dataSourceMode, setDataSourceMode] = useState(() => (typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'live'));
   const [lastSyncString, setLastSyncString] = useState('');
+
+  // Persist preferences locally
+  useEffect(() => {
+    saveUserPreference('lang', lang);
+  }, [lang]);
+
+  useEffect(() => {
+    saveUserPreference('crop', selectedCropId);
+  }, [selectedCropId]);
+
+  useEffect(() => {
+    saveUserPreference('state', selectedState);
+  }, [selectedState]);
+
+  // Network online/offline event listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setDataSourceMode('live');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setDataSourceMode('offline');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Auto-sync and auto-detect location
   useEffect(() => {
@@ -109,7 +148,7 @@ export default function App() {
   const loadPrices = async (mode = dataSourceMode, state = selectedState) => {
     setLoading(true);
 
-    if (mode === 'live') {
+    if (mode === 'live' && isOnline) {
       const result = await fetchLiveGovPrices({ state, limit: 100 });
       if (result.success && result.records.length > 0) {
         const enhancedRecords = result.records.map((r, i) => {
@@ -291,6 +330,7 @@ export default function App() {
   const activeCropObj = SIDEBAR_CROPS.find(c => c.id === selectedCropId) || SIDEBAR_CROPS[0];
   const featuredRecord = filteredRecords[0] || records.find(r => r.commodity_id === selectedCropId) || records[0];
   const featuredPrice = featuredRecord ? featuredRecord.modal_price : 2450;
+  const featuredPerKg = (featuredPrice / 100).toFixed(2);
   const featuredTrend = 40;
 
   // Text to speech for featured rate
@@ -520,10 +560,29 @@ export default function App() {
 
           {/* RIGHT COLUMN: Hero Rate Banner + Mandis List + Audio Bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+            {/* Offline Status Banner */}
+            {!isOnline && (
+              <div style={{
+                background: '#fef3c7',
+                border: '1px solid #fde68a',
+                borderRadius: '12px',
+                padding: '10px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                color: '#92400e',
+                fontSize: '0.85rem',
+                fontWeight: 700
+              }}>
+                <span>📶</span>
+                <span>{lang === 'hi' ? 'इंटरनेट उपलब्ध नहीं है — ऐप पूरी तरह ऑफ़लाइन काम कर रहा है (स्थानीय सहेजा डेटा)।' : 'No internet connection — App is operating 100% offline using locally saved data.'}</span>
+              </div>
+            )}
+
             {/* TOP HERO RATE CARD (Matching Reference Design & Mobile Adaptive) */}
             <div className="hero-rate-card">
               {/* Left: Illustration, Crop Name & Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div className="hero-crop-info">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {renderCropIcon(activeCropObj.id, 56)}
                 </div>
@@ -538,12 +597,12 @@ export default function App() {
               </div>
 
               {/* Center: Big Price */}
-              <div style={{ textAlign: 'center' }}>
+              <div className="hero-price-box">
                 <div className="hero-price" style={{ fontSize: '2.9rem', fontWeight: 900, color: '#111827', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   ₹{featuredPrice.toLocaleString('en-IN')}
                 </div>
                 <div style={{ fontSize: '0.92rem', color: '#6b7280', fontWeight: 600, marginTop: '4px' }}>
-                  {t.perQuintal}
+                  {t.perQuintal} • (₹{featuredPerKg}/kg)
                 </div>
               </div>
 
