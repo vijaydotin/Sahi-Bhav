@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MandiCard from './components/MandiCard.jsx';
+import VoiceSearchButton from './components/VoiceSearchButton.jsx';
 import { CROP_DICTIONARY, findCropByQuery } from './data/cropDictionary.js';
 import { fetchLiveGovPrices } from './services/govPriceService.js';
 import { 
@@ -345,7 +346,7 @@ export default function App() {
           alignItems: 'center',
           marginBottom: '16px'
         }}>
-          {/* Search Bar */}
+          {/* Search Bar with Voice Search */}
           <div style={{ position: 'relative' }}>
             <input
               type="text"
@@ -354,13 +355,20 @@ export default function App() {
               placeholder={t.searchPlaceholder}
               style={{
                 width: '100%',
-                padding: '14px 18px',
+                padding: '14px 80px 14px 18px',
                 fontSize: '1rem',
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-card-border)',
                 color: 'var(--color-text-main)',
                 boxShadow: 'var(--shadow-sm)'
+              }}
+            />
+            {/* Voice Search Mic Button */}
+            <VoiceSearchButton
+              lang={lang}
+              onResult={(spokenText) => {
+                setSearchQuery(spokenText);
               }}
             />
             {searchQuery && (
