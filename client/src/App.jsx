@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import MandiCard from './components/MandiCard.jsx';
 import { CROP_DICTIONARY, findCropByQuery } from './data/cropDictionary.js';
 import { fetchLiveGovPrices } from './services/govPriceService.js';
-import { detectUserLocation, calculateDistanceKm, DISTRICT_COORDINATES } from './services/locationService.js';
+import { 
+  detectUserLocation, 
+  calculateDistanceKm, 
+  DISTRICT_COORDINATES, 
+  getLastSavedLocation, 
+  getLastSavedState, 
+  saveLastLocation 
+} from './services/locationService.js';
 import { saveSyncedData, getCachedStateData, getLastSyncTime, getRelativeTimeString } from './services/syncService.js';
 
 const STATES = [
@@ -24,12 +31,30 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [dataMeta, setDataMeta] = useState(null);
-  const [selectedState, setSelectedState] = useState('Madhya Pradesh');
+  
+  // Initialize with persisted state or fallback
+  const [selectedState, setSelectedState] = useState(() => getLastSavedState() || 'Madhya Pradesh');
+  const [userLocation, setUserLocation] = useState(() => getLastSavedLocation());
   const [dataSourceMode, setDataSourceMode] = useState('live'); // 'live' or 'offline'
   const [liveStatusText, setLiveStatusText] = useState('');
-  const [userLocation, setUserLocation] = useState(null);
-  const [detectingLocation, setDetectingLocation] = useState(false);
   const [lastSyncString, setLastSyncString] = useState('');
+
+  // 1. Auto-sync and auto-detect location whenever the app opens
+  useEffect(() => {
+    // Attempt automatic background location detection on app open
+    detectUserLocation()
+      .then(loc => {
+        setUserLocation(loc);
+        if (loc.state && STATES.includes(loc.state)) {
+          setSelectedState(loc.state);
+        }
+      })
+      .catch(() => {
+        // Silent fallback to last saved location/state
+        const saved = getLastSavedLocation();
+        if (saved) setUserLocation(saved);
+      });
+  }, []);
 
   // Update relative sync time periodically
   useEffect(() => {
@@ -42,26 +67,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [lang]);
 
-  // Handle Location Detection
-  const handleDetectLocation = async () => {
-    setDetectingLocation(true);
-    try {
-      const loc = await detectUserLocation();
-      setUserLocation(loc);
-      if (loc.state && STATES.includes(loc.state)) {
-        setSelectedState(loc.state);
-      }
-    } catch (err) {
-      console.warn('Geolocation permission denied or timed out:', err.message);
-      alert(lang === 'hi' 
-        ? 'स्थान अनुमति प्राप्त नहीं हुई। कृपया सूची से अपना राज्य चुनें।' 
-        : 'Location access denied or unavailable. Please select your state manually.');
-    } finally {
-      setDetectingLocation(false);
-    }
-  };
-
-  // Fetch prices based on mode with auto-caching
+  // Fetch and auto-sync prices
   const loadPrices = async (mode = dataSourceMode, state = selectedState) => {
     setLoading(true);
     setSyncing(true);
@@ -69,7 +75,7 @@ export default function App() {
     if (mode === 'live') {
       const result = await fetchLiveGovPrices({ state, limit: 80 });
       if (result.success && result.records.length > 0) {
-        // Compute distance dynamically if user location is available
+        // Compute distance dynamically if user location exists
         const enhancedRecords = result.records.map(r => {
           if (userLocation && r.district) {
             const distKey = r.district.toLowerCase();
@@ -99,7 +105,7 @@ export default function App() {
       }
     }
 
-    // Check local cached state data first
+    // Check offline cached state data
     const cached = getCachedStateData(state);
     if (cached && cached.records && cached.records.length > 0) {
       setRecords(cached.records);
@@ -138,6 +144,12 @@ export default function App() {
     loadPrices(dataSourceMode, selectedState);
   }, [dataSourceMode, selectedState]);
 
+  // Handle manual state change and persist it
+  const handleStateChange = (newState) => {
+    setSelectedState(newState);
+    saveLastLocation({ ...(userLocation || {}), state: newState });
+  };
+
   const t = {
     hi: {
       appName: 'सही भाव',
@@ -153,10 +165,7 @@ export default function App() {
       liveBadge: '🟢 लाइव सरकारी डेटा (data.gov.in)',
       offlineBadge: '📶 ऑफ़लाइन बैकअप स्नैपशॉट',
       refresh: 'सिंक करें',
-      detectLoc: '📍 मेरी लोकेशन पहचानें',
-      detecting: 'लोकेशन पहचानी जा रही है...',
-      nearestMandi: 'निकटतम मंडी',
-      syncedLabel: 'डेटा सिंक'
+      stateLabel: 'राज्य बदलें:'
     },
     en: {
       appName: 'SahiBhav',
@@ -172,10 +181,7 @@ export default function App() {
       liveBadge: '🟢 Live Gov Feed (data.gov.in)',
       offlineBadge: '📶 Offline Snapshot Backup',
       refresh: 'Sync Live',
-      detectLoc: '📍 Auto Detect Location',
-      detecting: 'Detecting Location...',
-      nearestMandi: 'Nearest Mandis',
-      syncedLabel: 'Data Sync'
+      stateLabel: 'Change State:'
     }
   }[lang];
 
@@ -312,11 +318,11 @@ export default function App() {
 
       {/* Main Content */}
       <main className="container" style={{ padding: '20px 16px', flex: 1 }}>
-        {/* Controls Bar: Search, Auto Location, State Select */}
+        {/* Controls Bar: Search & State Change Dropdown */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr auto auto',
-          gap: '10px',
+          gridTemplateColumns: '1fr auto',
+          gap: '12px',
           marginBottom: '16px'
         }}>
           {/* Search Bar */}
@@ -355,48 +361,29 @@ export default function App() {
             )}
           </div>
 
-          {/* Auto Detect Location Button */}
-          <button
-            onClick={handleDetectLocation}
-            disabled={detectingLocation}
-            style={{
-              padding: '0 16px',
-              borderRadius: 'var(--radius-md)',
-              background: userLocation ? 'rgba(34, 197, 94, 0.15)' : 'var(--color-surface)',
-              border: userLocation ? '1px solid var(--color-primary)' : '1px solid var(--color-card-border)',
-              color: userLocation ? 'var(--color-primary-light)' : 'var(--color-text-main)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {detectingLocation ? t.detecting : userLocation ? `📍 ${userLocation.district || userLocation.state}` : t.detectLoc}
-          </button>
-
-          {/* State Dropdown Filter */}
-          <select
-            value={selectedState}
-            onChange={(e) => setSelectedState(e.target.value)}
-            style={{
-              padding: '0 16px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-card-border)',
-              color: 'var(--color-text-main)',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            {STATES.map(s => (
-              <option key={s} value={s} style={{ background: '#102219', color: '#fff' }}>
-                📍 {s}
-              </option>
-            ))}
-          </select>
+          {/* State Change Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <select
+              value={selectedState}
+              onChange={(e) => handleStateChange(e.target.value)}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-card-border)',
+                color: 'var(--color-text-main)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {STATES.map(s => (
+                <option key={s} value={s} style={{ background: '#102219', color: '#fff' }}>
+                  📍 {s}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Crop Filter Pills */}
@@ -458,6 +445,11 @@ export default function App() {
         }}>
           <div>
             {t.showingResults}: <strong style={{ color: 'var(--color-primary-light)' }}>{filteredRecords.length}</strong>
+            {userLocation?.district && (
+              <span style={{ marginLeft: '10px', color: 'var(--color-accent)' }}>
+                📍 {lang === 'hi' ? `निकटतम क्षेत्र: ${userLocation.district}` : `Near: ${userLocation.district}`}
+              </span>
+            )}
             {liveStatusText && <span style={{ marginLeft: '10px', color: 'var(--color-primary)' }}>• {liveStatusText}</span>}
           </div>
           
@@ -473,7 +465,7 @@ export default function App() {
               gap: '4px'
             }}
           >
-            🔄 {syncing ? 'सिंक हो रहा है...' : t.refresh}
+            🔄 {syncing ? (lang === 'hi' ? 'सिंक हो रहा है...' : 'Syncing...') : t.refresh}
           </button>
         </div>
 

@@ -1,4 +1,7 @@
-// Location service for detecting user's state and calculating mandi distances
+// Location service for detecting user's state, persisting location, and calculating mandi distances
+
+const LAST_LOCATION_KEY = 'sahibhav_last_user_location';
+const LAST_STATE_KEY = 'sahibhav_last_user_state';
 
 // Coordinate centroids for major agricultural districts
 export const DISTRICT_COORDINATES = {
@@ -40,6 +43,37 @@ export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return Math.round(R * c);
 }
 
+// Persist location for offline access
+export function saveLastLocation(location) {
+  try {
+    if (location) {
+      localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify(location));
+      if (location.state) {
+        localStorage.setItem(LAST_STATE_KEY, location.state);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to save last location:', e);
+  }
+}
+
+export function getLastSavedLocation() {
+  try {
+    const raw = localStorage.getItem(LAST_LOCATION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getLastSavedState() {
+  try {
+    return localStorage.getItem(LAST_STATE_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
 // Auto-detect browser location
 export async function detectUserLocation() {
   if (!navigator.geolocation) {
@@ -54,7 +88,6 @@ export async function detectUserLocation() {
         let detectedDistrict = 'Indore';
 
         try {
-          // Fast reverse geocode via OpenStreetMap Nominatim
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
             headers: { 'Accept': 'application/json' }
           });
@@ -67,7 +100,6 @@ export async function detectUserLocation() {
             }
           }
         } catch {
-          // If Nominatim fails or blocked, find nearest district centroid
           let minD = Infinity;
           for (const [distName, coords] of Object.entries(DISTRICT_COORDINATES)) {
             const d = calculateDistanceKm(latitude, longitude, coords.lat, coords.lon);
@@ -79,17 +111,20 @@ export async function detectUserLocation() {
           }
         }
 
-        resolve({
+        const locResult = {
           latitude,
           longitude,
           state: detectedState,
           district: detectedDistrict
-        });
+        };
+
+        saveLastLocation(locResult);
+        resolve(locResult);
       },
       (err) => {
         reject(err);
       },
-      { timeout: 10000, enableHighAccuracy: false }
+      { timeout: 8000, enableHighAccuracy: false }
     );
   });
 }
