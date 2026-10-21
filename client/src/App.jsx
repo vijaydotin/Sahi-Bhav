@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MandiCard from './components/MandiCard.jsx';
+import ComparisonModal from './components/ComparisonModal.jsx';
 import VoiceSearchButton from './components/VoiceSearchButton.jsx';
 import { CROP_DICTIONARY, findCropByQuery } from './data/cropDictionary.js';
 import { fetchLiveGovPrices } from './services/govPriceService.js';
@@ -33,6 +34,7 @@ export default function App() {
   const [selectedCropId, setSelectedCropId] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedForCompare, setSelectedForCompare] = useState([]);
+  const [isComparingModalOpen, setIsComparingModalOpen] = useState(false);
   const [dataMeta, setDataMeta] = useState(null);
   
   // Initialize with persisted state or default to Uttar Pradesh
@@ -591,7 +593,24 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {selectedForCompare.length === 2 && (
+              <button
+                onClick={() => setIsComparingModalOpen(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--color-primary)',
+                  color: '#052e16',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ⚡ {lang === 'hi' ? 'दोनों की तुलना करें' : 'Compare Both'}
+              </button>
+            )}
+
             <button
               onClick={() => setSelectedForCompare([])}
               style={{
@@ -606,6 +625,15 @@ export default function App() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Comparison & Net Profit Sahi Munafa Modal */}
+      {isComparingModalOpen && selectedForCompare.length >= 2 && (
+        <ComparisonModal
+          mandis={selectedForCompare}
+          lang={lang}
+          onClose={() => setIsComparingModalOpen(false)}
+        />
       )}
 
       {/* Footer */}
