@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import MandiCard from './components/MandiCard.jsx';
 import { CROP_DICTIONARY, findCropByQuery } from './data/cropDictionary.js';
+import { fetchLiveGovPrices } from './services/govPriceService.js';
+
+const STATES = [
+  'Madhya Pradesh',
+  'Rajasthan',
+  'Uttar Pradesh',
+  'Maharashtra',
+  'Punjab',
+  'Haryana',
+  'Gujarat'
+];
 
 export default function App() {
   const [lang, setLang] = useState('hi'); // 'hi' or 'en'
@@ -10,16 +21,42 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [dataMeta, setDataMeta] = useState(null);
+  const [selectedState, setSelectedState] = useState('Madhya Pradesh');
+  const [dataSourceMode, setDataSourceMode] = useState('live'); // 'live' or 'offline'
+  const [liveStatusText, setLiveStatusText] = useState('');
 
-  // Load verified snapshot data on mount
-  useEffect(() => {
+  // Fetch prices based on mode
+  const loadPrices = async (mode = dataSourceMode, state = selectedState) => {
+    setLoading(true);
+
+    if (mode === 'live') {
+      const result = await fetchLiveGovPrices({ state, limit: 80 });
+      if (result.success && result.records.length > 0) {
+        setRecords(result.records);
+        setDataMeta({
+          isLive: true,
+          total: result.totalLive,
+          source: result.source,
+          updatedDate: result.updatedDate
+        });
+        setLiveStatusText(lang === 'hi' ? `सरकारी पोर्टल पर कुल ${result.totalLive} रिकॉर्ड उपलब्ध` : `${result.totalLive} live records on data.gov.in`);
+        setLoading(false);
+        return;
+      } else {
+        console.warn('Live API unavailable or empty, falling back to local snapshot');
+        setLiveStatusText(lang === 'hi' ? 'लाइव सर्वर व्यस्त, ऑफ़लाइन स्नैपशॉट लोड हुआ' : 'Live server busy, loaded snapshot');
+      }
+    }
+
+    // Fallback or explicit offline mode
     fetch('/data/mandi_snapshot.json')
       .then(res => res.json())
       .then(data => {
         setRecords(data.records || []);
         setDataMeta({
-          lastUpdated: data.last_updated,
-          source: data.source_name
+          isLive: false,
+          source: data.source_name,
+          updatedDate: data.last_updated
         });
         setLoading(false);
       })
@@ -27,66 +64,75 @@ export default function App() {
         console.error('Failed to load mandi snapshot:', err);
         setLoading(false);
       });
-  }, []);
+  };
+
+  useEffect(() => {
+    loadPrices(dataSourceMode, selectedState);
+  }, [dataSourceMode, selectedState]);
 
   const t = {
     hi: {
       appName: 'सही भाव',
       tagline: 'किसान-प्रथम मंडी भाव और सही मुनाफ़ा मार्गदर्शक',
-      searchPlaceholder: 'फसल खोजें (उदा. गेहूं, सरसों, चना, प्याज़)...',
+      searchPlaceholder: 'फसल खोजें (उदा. गेहूं, सरसों, सोयाबीन, चना, प्याज़)...',
       allCrops: 'सभी फसलें',
-      verifiedTag: 'आधिकारिक मंडी बुलेटिन',
+      verifiedTag: 'सत्यापित सुबह की नीलामी',
       showingResults: 'उपलब्ध भाव रिकॉर्ड',
-      noResults: 'कोई परिणाम नहीं मिला। कृपया अन्य फसल का नाम खोजें।',
+      noResults: 'इस राज्य/फसल में कोई रिकॉर्ड नहीं मिला। कृपया अन्य फसल या राज्य चुनें।',
       compareBanner: 'मंडी तुलना पैनल',
       compareBtn: 'दोनों मंडियों की तुलना करें',
       clearCompare: 'तुलना हटाएं',
-      lastUpdated: 'अंतिम अपडेट'
+      lastUpdated: 'अंतिम अपडेट',
+      liveBadge: '🟢 लाइव सरकारी डेटा (data.gov.in)',
+      offlineBadge: '📶 ऑफ़लाइन बैकअप स्नैपशॉट',
+      refresh: 'ताज़ा करें',
+      stateLabel: 'राज्य चुनें'
     },
     en: {
       appName: 'SahiBhav',
       tagline: 'Farmer-First Mandi Price Transparency & Profit Guide',
-      searchPlaceholder: 'Search crop (e.g. Wheat, Mustard, Gram, Onion)...',
+      searchPlaceholder: 'Search crop (e.g. Wheat, Mustard, Soybean, Gram, Onion)...',
       allCrops: 'All Crops',
-      verifiedTag: 'Official Mandi Bulletin',
+      verifiedTag: 'Verified Morning Auctions',
       showingResults: 'Available Price Records',
-      noResults: 'No records found. Please try searching another crop name.',
+      noResults: 'No records found for this crop/state. Please try another selection.',
       compareBanner: 'Mandi Comparison Panel',
       compareBtn: 'Compare Selected Mandis',
       clearCompare: 'Clear Selection',
-      lastUpdated: 'Last Updated'
+      lastUpdated: 'Last Updated',
+      liveBadge: '🟢 Live Gov Feed (data.gov.in)',
+      offlineBadge: '📶 Offline Snapshot Backup',
+      refresh: 'Refresh Live',
+      stateLabel: 'Select State'
     }
   }[lang];
 
-  // Filter records based on selected crop filter and search query
+  // Filter records
   const filteredRecords = records.filter(record => {
-    // Crop filter pill
     if (selectedCropId !== 'all' && record.commodity_id !== selectedCropId) {
       return false;
     }
 
-    // Search query
     if (searchQuery.trim()) {
       const match = findCropByQuery(searchQuery);
-      if (match) {
-        return record.commodity_id === match.id;
+      if (match && record.commodity_id === match.id) {
+        return true;
       }
       const q = searchQuery.toLowerCase();
-      const inHi = record.commodity_hi.toLowerCase().includes(q) || record.market_hi.toLowerCase().includes(q);
-      const inEn = record.commodity_en.toLowerCase().includes(q) || record.market_en.toLowerCase().includes(q);
-      return inHi || inEn;
+      const inHi = (record.commodity_hi || '').toLowerCase().includes(q) || (record.market_hi || '').toLowerCase().includes(q);
+      const inEn = (record.commodity_en || '').toLowerCase().includes(q) || (record.market_en || '').toLowerCase().includes(q);
+      const inVariety = (record.variety || '').toLowerCase().includes(q);
+      return inHi || inEn || inVariety;
     }
 
     return true;
   });
 
-  // Toggle selection for comparison
   const handleToggleCompare = (record) => {
     if (selectedForCompare.some(r => r.id === record.id)) {
       setSelectedForCompare(selectedForCompare.filter(r => r.id !== record.id));
     } else {
       if (selectedForCompare.length >= 2) {
-        // Replace oldest or keep max 2
         setSelectedForCompare([selectedForCompare[1], record]);
       } else {
         setSelectedForCompare([...selectedForCompare, record]);
@@ -105,7 +151,7 @@ export default function App() {
         top: 0,
         zIndex: 50
       }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <img 
               src="/logo.jpeg" 
@@ -113,20 +159,22 @@ export default function App() {
               style={{ width: '42px', height: '42px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
             />
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary-light)', letterSpacing: '-0.02em' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary-light)', letterSpacing: '-0.02em', margin: 0 }}>
                   {t.appName}
                 </h1>
+                
+                {/* Live vs Offline Tag */}
                 <span style={{
-                  fontSize: '0.7rem',
-                  padding: '2px 8px',
+                  fontSize: '0.72rem',
+                  padding: '3px 10px',
                   borderRadius: 'var(--radius-full)',
-                  background: 'rgba(34, 197, 94, 0.15)',
-                  color: 'var(--color-primary)',
-                  fontWeight: 600,
-                  border: '1px solid rgba(34, 197, 94, 0.3)'
+                  background: dataMeta?.isLive ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                  color: dataMeta?.isLive ? 'var(--color-primary-light)' : 'var(--color-accent)',
+                  fontWeight: 700,
+                  border: dataMeta?.isLive ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)'
                 }}>
-                  ✓ {t.verifiedTag}
+                  {dataMeta?.isLive ? t.liveBadge : t.offlineBadge}
                 </span>
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', margin: 0 }}>
@@ -135,66 +183,113 @@ export default function App() {
             </div>
           </div>
 
-          {/* Language Switcher */}
-          <button
-            onClick={() => setLang(lang === 'hi' ? 'en' : 'hi')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-card-border)',
-              color: 'var(--color-text-main)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            🌐 {lang === 'hi' ? 'English' : 'हिंदी'}
-          </button>
+          {/* Right Header Controls: Feed Mode & Language */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Mode switch */}
+            <button
+              onClick={() => setDataSourceMode(dataSourceMode === 'live' ? 'offline' : 'live')}
+              title={lang === 'hi' ? 'लाइव या ऑफ़लाइन मोड बदलें' : 'Toggle Live/Offline feed'}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-full)',
+                background: dataSourceMode === 'live' ? '#14532d' : 'var(--color-surface)',
+                border: '1px solid var(--color-card-border)',
+                color: 'var(--color-text-main)',
+                fontSize: '0.8rem',
+                fontWeight: 600
+              }}
+            >
+              {dataSourceMode === 'live' ? '🟢 Live API' : '📶 Offline'}
+            </button>
+
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLang(lang === 'hi' ? 'en' : 'hi')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-card-border)',
+                color: 'var(--color-text-main)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              🌐 {lang === 'hi' ? 'English' : 'हिंदी'}
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container" style={{ padding: '20px 16px', flex: 1 }}>
-        {/* Search Bar */}
+        {/* Controls Bar: Search & State Select */}
         <div style={{
-          position: 'relative',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto',
+          gap: '12px',
           marginBottom: '16px'
         }}>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.searchPlaceholder}
+          {/* Search Bar */}
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t.searchPlaceholder}
+              style={{
+                width: '100%',
+                padding: '14px 18px',
+                fontSize: '1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-card-border)',
+                color: 'var(--color-text-main)',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--color-text-dim)',
+                  fontSize: '0.9rem',
+                  padding: '4px 8px'
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* State Dropdown Filter */}
+          <select
+            value={selectedState}
+            onChange={(e) => setSelectedState(e.target.value)}
             style={{
-              width: '100%',
-              padding: '14px 18px',
-              fontSize: '1rem',
+              padding: '0 16px',
               borderRadius: 'var(--radius-md)',
               background: 'var(--color-surface)',
               border: '1px solid var(--color-card-border)',
               color: 'var(--color-text-main)',
-              boxShadow: 'var(--shadow-sm)'
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: 'pointer'
             }}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: '14px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--color-text-dim)',
-                fontSize: '0.9rem',
-                padding: '4px 8px'
-              }}
-            >
-              ✕
-            </button>
-          )}
+          >
+            {STATES.map(s => (
+              <option key={s} value={s} style={{ background: '#102219', color: '#fff' }}>
+                📍 {s}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Crop Filter Pills */}
@@ -203,7 +298,7 @@ export default function App() {
           gap: '8px',
           overflowX: 'auto',
           paddingBottom: '8px',
-          marginBottom: '20px'
+          marginBottom: '16px'
         }}>
           <button
             onClick={() => { setSelectedCropId('all'); setSearchQuery(''); }}
@@ -240,29 +335,47 @@ export default function App() {
           ))}
         </div>
 
-        {/* Results Count & Meta */}
+        {/* Status Bar */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px',
           marginBottom: '14px',
           fontSize: '0.85rem',
-          color: 'var(--color-text-dim)'
+          color: 'var(--color-text-dim)',
+          background: 'rgba(255, 255, 255, 0.02)',
+          padding: '8px 12px',
+          borderRadius: 'var(--radius-sm)'
         }}>
-          <span>
+          <div>
             {t.showingResults}: <strong style={{ color: 'var(--color-primary-light)' }}>{filteredRecords.length}</strong>
-          </span>
-          {dataMeta && (
-            <span>
-              ℹ️ {t.lastUpdated}: 21/10/2026 06:00 AM
-            </span>
-          )}
+            {liveStatusText && <span style={{ marginLeft: '10px', color: 'var(--color-primary)' }}>• {liveStatusText}</span>}
+          </div>
+          
+          <button
+            onClick={() => loadPrices(dataSourceMode, selectedState)}
+            style={{
+              color: 'var(--color-primary-light)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            🔄 {t.refresh}
+          </button>
         </div>
 
-        {/* Loading State */}
+        {/* Loading Spinner */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-dim)' }}>
-            🌾 भाव लोड हो रहे हैं...
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-primary-light)' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '12px', animation: 'spin 1s infinite' }}>🌾</div>
+            <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              {lang === 'hi' ? 'data.gov.in से लाइव सरकारी मंडी भाव लोड हो रहे हैं...' : 'Fetching live government mandi prices from data.gov.in...'}
+            </p>
           </div>
         ) : filteredRecords.length === 0 ? (
           <div style={{
@@ -351,7 +464,7 @@ export default function App() {
         background: 'var(--color-surface)'
       }}>
         <div className="container">
-          SahiBhav 🌾 • {lang === 'hi' ? 'किसानों के लिए पारदर्शी मंडी भाव पहल' : 'Open Transparent Mandi Price Initiative'}
+          SahiBhav 🌾 • {lang === 'hi' ? 'कृषि मंत्रालय, भारत सरकार के आधिकारिक ओपन डेटा पर आधारित' : 'Powered by Open Government Data (data.gov.in) • Ministry of Agriculture'}
         </div>
       </footer>
     </div>
