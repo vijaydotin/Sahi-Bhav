@@ -51,11 +51,27 @@ export const CROP_DICTIONARY = [
   },
   {
     id: 'paddy',
-    name_hi: 'धान / चावल',
-    name_en: 'Paddy / Rice',
-    icon: '🍚',
+    name_hi: 'धान',
+    name_en: 'Paddy',
+    icon: '🌾',
     msp: 2183,
     aliases: ['dhan', 'chawal', 'paddy', 'rice', 'धान', 'चावल']
+  },
+  {
+    id: 'tomato',
+    name_hi: 'टमाटर',
+    name_en: 'Tomato',
+    icon: '🍅',
+    msp: null,
+    aliases: ['tamatar', 'tamater', 'tomato', 'टमाटर']
+  },
+  {
+    id: 'maize',
+    name_hi: 'मक्का',
+    name_en: 'Maize',
+    icon: '🌽',
+    msp: 2090,
+    aliases: ['makka', 'makai', 'bhutta', 'corn', 'maize', 'मक्का', 'मकाई', 'भुट्टा']
   }
 ];
 

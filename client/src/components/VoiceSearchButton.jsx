@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function VoiceSearchButton({ onResult, lang = 'hi', disabled = false }) {
+export default function VoiceSearchButton({ onResult, lang = 'hi', disabled = false, style: customStyle = {} }) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef(null);
@@ -91,24 +91,25 @@ export default function VoiceSearchButton({ onResult, lang = 'hi', disabled = fa
       title={lang === 'hi' ? 'बोलकर खोजें (उदा. गेहूं, सरसों)' : 'Search by voice'}
       style={{
         position: 'absolute',
-        right: '42px',
+        right: '6px',
         top: '50%',
         transform: 'translateY(-50%)',
         background: isListening ? '#ef4444' : 'rgba(34, 197, 94, 0.15)',
         border: isListening ? '1px solid #f87171' : '1px solid rgba(34, 197, 94, 0.35)',
         color: isListening ? '#ffffff' : 'var(--color-primary-light)',
         borderRadius: 'var(--radius-full)',
-        width: '34px',
-        height: '34px',
+        width: '30px',
+        height: '30px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '1rem',
+        fontSize: '0.9rem',
         cursor: 'pointer',
         boxShadow: isListening ? '0 0 12px rgba(239, 68, 68, 0.8)' : 'none',
         animation: isListening ? 'pulse 1.2s infinite' : 'none',
         transition: 'var(--transition)',
-        zIndex: 10
+        zIndex: 10,
+        ...customStyle
       }}
     >
       {isListening ? '🎙️' : '🎤'}

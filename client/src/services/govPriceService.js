@@ -25,7 +25,29 @@ const CROP_TRANSLATIONS = {
   'bajra(pearl millet/cumbu)': 'बाजरा',
   'barley(jau)': 'जौ',
   'green gram (moong)(whole)': 'मूंग दाल',
-  'black gram (urd beans)(whole)': 'उड़द दाल'
+};
+
+const MANDI_TRANSLATIONS = {
+  'alambagh': 'आलमबाग',
+  'aliganj': 'अलीगंज',
+  'achalda': 'अचलदा',
+  'babrala': 'बाबराला',
+  'kanpur': 'कानपुर',
+  'kanpur(grain)': 'कानपुर',
+  'bareilly': 'बरेली',
+  'bishalpur': 'बीसलपुर',
+  'bangarmau': 'बांगरमऊ',
+  'madh': 'मड़',
+  'jaunpur': 'जौनपुर',
+  'ghazipur': 'गाजीपुर',
+  'lucknow': 'लखनऊ',
+  'barabanki': 'बाराबंकी',
+  'sitapur': 'सीतापुर',
+  'safdarganj': 'सफदरगंज',
+  'jhijhank': 'झींझक',
+  'indore': 'इंदौर',
+  'ujjain': 'उज्जैन',
+  'dewas': 'देवास'
 };
 
 const MSP_MAP = {
@@ -75,14 +97,17 @@ export async function fetchLiveGovPrices({ state = 'Uttar Pradesh', limit = 100 
         else if (commLower.includes('potato') || commLower.includes('alu') || commLower.includes('aloo')) commId = 'potato';
         else if (commLower.includes('paddy') || commLower.includes('rice') || commLower.includes('dhan')) commId = 'paddy';
 
+        const cleanMarket = (r.market || '').replace(/\(grain\)/gi, '').replace(/apmc/gi, '').trim();
+        const cleanLower = cleanMarket.toLowerCase();
+        const hindiName = MANDI_TRANSLATIONS[cleanLower] || MANDI_TRANSLATIONS[(r.market || '').toLowerCase()] || cleanMarket;
+
         return {
           id: `live_${idx}_${r.market}_${commLower}`,
           commodity_id: commId,
           commodity_hi: commHi,
           commodity_en: commRaw,
-          variety: r.variety || 'सामान्य (Standard)',
-          market_hi: `${r.market} मंडी`,
-          market_en: `${r.market} Mandi`,
+          market_hi: `${hindiName} मंडी`,
+          market_en: `${cleanMarket} Mandi`,
           district: r.district,
           state: r.state,
           distance_km: Math.floor(Math.random() * 45) + 10,

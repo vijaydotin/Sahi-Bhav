@@ -2,40 +2,42 @@
   --font-primary: 'Mukta', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-en: 'Plus Jakarta Sans', system-ui, sans-serif;
 
-  /* Clean Light Agricultural Palette (Matching Reference Design) */
-  --color-bg: #f4f6f4;
+  /* Reference Mockup Agricultural Palette */
+  --color-bg: #f3f6f3;
   --color-surface: #ffffff;
-  --color-surface-hover: #f8faf8;
-  --color-card: #ffffff;
-  --color-card-border: #e5e9e5;
-  --color-card-selected: #e8f5ec;
-  --color-card-selected-border: #2e7d43;
+  --color-surface-hover: #f9fbf9;
   
-  --color-primary: #1b5e20;
-  --color-primary-dark: #0e3b13;
-  --color-primary-light: #e8f5ec;
-  --color-accent: #d97706; /* Golden Wheat */
-  --color-accent-soft: rgba(217, 119, 6, 0.1);
+  --color-card-border: #eef2ee;
+  --color-card-selected-bg: #edf8ee;
+  --color-card-selected-border: #4caf50;
   
-  --color-text-main: #1e293b;
-  --color-text-muted: #475569;
-  --color-text-dim: #64748b;
+  --color-hero-bg: #edf8ee;
+  --color-hero-border: #d8eedb;
   
-  --color-badge-green: #e6f4ea;
-  --color-badge-green-text: #137333;
+  --color-badge-green: #d7f3dc;
+  --color-badge-green-text: #166534;
+
+  --color-btn-pill-bg: #dcf5e3;
+  --color-btn-pill-text: #14532d;
+  --color-btn-dark: #0f3e1f;
+
+  --color-primary: #14532d;
+  --color-primary-dark: #092c14;
+  
+  --color-text-main: #111827;
+  --color-text-muted: #4b5563;
+  --color-text-dim: #6b7280;
+  
   --color-tag-cached: #fef3c7;
   --color-tag-cached-text: #92400e;
-  --color-danger: #dc2626;
-  --color-success: #16a34a;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
   --radius-sm: 8px;
   --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-lg: 18px;
   --radius-full: 9999px;
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -49,7 +51,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text-main);
   min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -69,7 +71,20 @@ input, select {
 }
 
 .container {
-  max-width: 1240px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }

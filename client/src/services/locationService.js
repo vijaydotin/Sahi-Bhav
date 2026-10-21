@@ -67,11 +67,36 @@ export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return Math.round(R * c);
 }
 
-// Format exact city/state string (e.g. "Lucknow / UP")
-export function formatCityState(district, state) {
-  const cleanDist = district || DEFAULT_STATE_CITIES[state] || 'Local';
-  const shortState = STATE_SHORT_CODES[state] || state;
-  return `${cleanDist} / ${shortState}`;
+const HINDI_DISTRICTS = {
+  'lucknow': 'लखनऊ',
+  'kanpur': 'कानपुर',
+  'barabanki': 'बाराबंकी',
+  'indore': 'इंदौर',
+  'jaipur': 'जयपुर'
+};
+
+const HINDI_STATES = {
+  'Uttar Pradesh': 'उत्तर प्रदेश',
+  'Madhya Pradesh': 'मध्य प्रदेश',
+  'Rajasthan': 'राजस्थान',
+  'Maharashtra': 'महाराष्ट्र',
+  'Punjab': 'पंजाब',
+  'Haryana': 'हरियाणा',
+  'Gujarat': 'गुजरात'
+};
+
+// Format exact city/state string (e.g. "लखनऊ, उत्तर प्रदेश" or "Lucknow, Uttar Pradesh")
+export function formatCityState(district, state, lang = 'hi') {
+  const cleanDist = district || DEFAULT_STATE_CITIES[state] || 'Lucknow';
+  const distKey = cleanDist.toLowerCase();
+
+  if (lang === 'hi') {
+    const hiDist = HINDI_DISTRICTS[distKey] || cleanDist;
+    const hiState = HINDI_STATES[state] || state;
+    return `${hiDist}, ${hiState}`;
+  }
+
+  return `${cleanDist}, ${state}`;
 }
 
 // Persist location for offline access
