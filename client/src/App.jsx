@@ -8,14 +8,16 @@ import {
   DISTRICT_COORDINATES, 
   getLastSavedLocation, 
   getLastSavedState, 
-  saveLastLocation 
+  saveLastLocation,
+  formatCityState,
+  DEFAULT_STATE_CITIES
 } from './services/locationService.js';
 import { saveSyncedData, getCachedStateData, getLastSyncTime, getRelativeTimeString } from './services/syncService.js';
 
 const STATES = [
+  'Uttar Pradesh',
   'Madhya Pradesh',
   'Rajasthan',
-  'Uttar Pradesh',
   'Maharashtra',
   'Punjab',
   'Haryana',
@@ -32,16 +34,23 @@ export default function App() {
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [dataMeta, setDataMeta] = useState(null);
   
-  // Initialize with persisted state or fallback
-  const [selectedState, setSelectedState] = useState(() => getLastSavedState() || 'Madhya Pradesh');
-  const [userLocation, setUserLocation] = useState(() => getLastSavedLocation());
+  // Initialize with persisted state or default to Uttar Pradesh
+  const [selectedState, setSelectedState] = useState(() => getLastSavedState() || 'Uttar Pradesh');
+  const [userLocation, setUserLocation] = useState(() => {
+    const saved = getLastSavedLocation();
+    if (saved) return saved;
+    return {
+      district: DEFAULT_STATE_CITIES['Uttar Pradesh'] || 'Lucknow',
+      state: 'Uttar Pradesh'
+    };
+  });
+  
   const [dataSourceMode, setDataSourceMode] = useState('live'); // 'live' or 'offline'
   const [liveStatusText, setLiveStatusText] = useState('');
   const [lastSyncString, setLastSyncString] = useState('');
 
-  // 1. Auto-sync and auto-detect location whenever the app opens
+  // 1. Auto-sync and auto-detect location on open
   useEffect(() => {
-    // Attempt automatic background location detection on app open
     detectUserLocation()
       .then(loc => {
         setUserLocation(loc);
@@ -50,9 +59,10 @@ export default function App() {
         }
       })
       .catch(() => {
-        // Silent fallback to last saved location/state
         const saved = getLastSavedLocation();
-        if (saved) setUserLocation(saved);
+        if (saved) {
+          setUserLocation(saved);
+        }
       });
   }, []);
 
@@ -75,12 +85,12 @@ export default function App() {
     if (mode === 'live') {
       const result = await fetchLiveGovPrices({ state, limit: 80 });
       if (result.success && result.records.length > 0) {
-        // Compute distance dynamically if user location exists
+        // Compute distance dynamically
         const enhancedRecords = result.records.map(r => {
           if (userLocation && r.district) {
             const distKey = r.district.toLowerCase();
             const coord = DISTRICT_COORDINATES[distKey];
-            if (coord) {
+            if (coord && userLocation.latitude && userLocation.longitude) {
               const d = calculateDistanceKm(userLocation.latitude, userLocation.longitude, coord.lat, coord.lon);
               return { ...r, distance_km: d };
             }
@@ -144,10 +154,17 @@ export default function App() {
     loadPrices(dataSourceMode, selectedState);
   }, [dataSourceMode, selectedState]);
 
-  // Handle manual state change and persist it
+  // Handle manual state change and update default city
   const handleStateChange = (newState) => {
     setSelectedState(newState);
-    saveLastLocation({ ...(userLocation || {}), state: newState });
+    const defaultCity = DEFAULT_STATE_CITIES[newState] || 'Main Mandi';
+    const updatedLoc = {
+      ...(userLocation || {}),
+      state: newState,
+      district: defaultCity
+    };
+    setUserLocation(updatedLoc);
+    saveLastLocation(updatedLoc);
   };
 
   const t = {
@@ -158,14 +175,14 @@ export default function App() {
       allCrops: 'सभी फसलें',
       verifiedTag: 'सत्यापित सुबह की नीलामी',
       showingResults: 'उपलब्ध भाव रिकॉर्ड',
-      noResults: 'इस राज्य/फसल में कोई रिकॉर्ड नहीं मिला। कृपया अन्य फसल या राज्य चुनें।',
+      noResults: 'इस क्षेत्र/फसल में कोई रिकॉर्ड नहीं मिला। कृपया अन्य फसल या राज्य चुनें।',
       compareBanner: 'मंडी तुलना पैनल',
       clearCompare: 'तुलना हटाएं',
       lastUpdated: 'अंतिम अपडेट',
       liveBadge: '🟢 लाइव सरकारी डेटा (data.gov.in)',
       offlineBadge: '📶 ऑफ़लाइन बैकअप स्नैपशॉट',
       refresh: 'सिंक करें',
-      stateLabel: 'राज्य बदलें:'
+      currentLocation: 'सटीक स्थान'
     },
     en: {
       appName: 'SahiBhav',
@@ -181,7 +198,7 @@ export default function App() {
       liveBadge: '🟢 Live Gov Feed (data.gov.in)',
       offlineBadge: '📶 Offline Snapshot Backup',
       refresh: 'Sync Live',
-      stateLabel: 'Change State:'
+      currentLocation: 'Exact Location'
     }
   }[lang];
 
@@ -217,6 +234,8 @@ export default function App() {
       }
     }
   };
+
+  const exactCityStateText = formatCityState(userLocation?.district, selectedState);
 
   return (
     <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -318,11 +337,12 @@ export default function App() {
 
       {/* Main Content */}
       <main className="container" style={{ padding: '20px 16px', flex: 1 }}>
-        {/* Controls Bar: Search & State Change Dropdown */}
+        {/* Controls Bar: Search, Exact City Badge, State Dropdown */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr auto',
+          gridTemplateColumns: '1fr auto auto',
           gap: '12px',
+          alignItems: 'center',
           marginBottom: '16px'
         }}>
           {/* Search Bar */}
@@ -361,29 +381,45 @@ export default function App() {
             )}
           </div>
 
-          {/* State Change Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <select
-              value={selectedState}
-              onChange={(e) => handleStateChange(e.target.value)}
-              style={{
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-card-border)',
-                color: 'var(--color-text-main)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {STATES.map(s => (
-                <option key={s} value={s} style={{ background: '#102219', color: '#fff' }}>
-                  📍 {s}
-                </option>
-              ))}
-            </select>
+          {/* Exact City/State Badge (e.g. Lucknow / UP) */}
+          <div style={{
+            background: 'rgba(34, 197, 94, 0.12)',
+            border: '1px solid rgba(34, 197, 94, 0.35)',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--color-primary-light)',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            whiteSpace: 'nowrap'
+          }}>
+            <span>📍</span>
+            <span>{exactCityStateText}</span>
           </div>
+
+          {/* State Change Dropdown */}
+          <select
+            value={selectedState}
+            onChange={(e) => handleStateChange(e.target.value)}
+            style={{
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-card-border)',
+              color: 'var(--color-text-main)',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {STATES.map(s => (
+              <option key={s} value={s} style={{ background: '#102219', color: '#fff' }}>
+                📍 {s}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Crop Filter Pills */}
@@ -445,11 +481,9 @@ export default function App() {
         }}>
           <div>
             {t.showingResults}: <strong style={{ color: 'var(--color-primary-light)' }}>{filteredRecords.length}</strong>
-            {userLocation?.district && (
-              <span style={{ marginLeft: '10px', color: 'var(--color-accent)' }}>
-                📍 {lang === 'hi' ? `निकटतम क्षेत्र: ${userLocation.district}` : `Near: ${userLocation.district}`}
-              </span>
-            )}
+            <span style={{ marginLeft: '10px', color: 'var(--color-accent)' }}>
+              📍 {exactCityStateText}
+            </span>
             {liveStatusText && <span style={{ marginLeft: '10px', color: 'var(--color-primary)' }}>• {liveStatusText}</span>}
           </div>
           
@@ -474,7 +508,7 @@ export default function App() {
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-primary-light)' }}>
             <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🌾</div>
             <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-              {lang === 'hi' ? 'data.gov.in से लाइव सरकारी मंडी भाव लोड हो रहे हैं...' : 'Fetching live government mandi prices from data.gov.in...'}
+              {lang === 'hi' ? `data.gov.in से ${selectedState} के लाइव सरकारी मंडी भाव लोड हो रहे हैं...` : `Fetching live government mandi prices for ${selectedState}...`}
             </p>
           </div>
         ) : filteredRecords.length === 0 ? (

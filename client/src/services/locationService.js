@@ -3,8 +3,36 @@
 const LAST_LOCATION_KEY = 'sahibhav_last_user_location';
 const LAST_STATE_KEY = 'sahibhav_last_user_state';
 
+export const STATE_SHORT_CODES = {
+  'Madhya Pradesh': 'MP',
+  'Uttar Pradesh': 'UP',
+  'Rajasthan': 'RJ',
+  'Maharashtra': 'MH',
+  'Punjab': 'PB',
+  'Haryana': 'HR',
+  'Gujarat': 'GJ'
+};
+
+export const DEFAULT_STATE_CITIES = {
+  'Madhya Pradesh': 'Indore',
+  'Uttar Pradesh': 'Lucknow',
+  'Rajasthan': 'Jaipur',
+  'Maharashtra': 'Nagpur',
+  'Punjab': 'Ludhiana',
+  'Haryana': 'Karnal',
+  'Gujarat': 'Ahmedabad'
+};
+
 // Coordinate centroids for major agricultural districts
 export const DISTRICT_COORDINATES = {
+  // Uttar Pradesh
+  'lucknow': { lat: 26.8467, lon: 80.9462, state: 'Uttar Pradesh' },
+  'kanpur': { lat: 26.4499, lon: 80.3319, state: 'Uttar Pradesh' },
+  'varanasi': { lat: 25.3176, lon: 82.9739, state: 'Uttar Pradesh' },
+  'agra': { lat: 27.1767, lon: 78.0081, state: 'Uttar Pradesh' },
+  'aligarh': { lat: 27.8974, lon: 78.0880, state: 'Uttar Pradesh' },
+  'barabanki': { lat: 26.9274, lon: 81.1843, state: 'Uttar Pradesh' },
+
   // Madhya Pradesh
   'indore': { lat: 22.7196, lon: 75.8577, state: 'Madhya Pradesh' },
   'ujjain': { lat: 23.1765, lon: 75.7885, state: 'Madhya Pradesh' },
@@ -23,11 +51,7 @@ export const DISTRICT_COORDINATES = {
   // Maharashtra
   'nagpur': { lat: 21.1458, lon: 79.0882, state: 'Maharashtra' },
   'nashik': { lat: 19.9975, lon: 73.7898, state: 'Maharashtra' },
-  'pune': { lat: 18.5204, lon: 73.8567, state: 'Maharashtra' },
-
-  // Uttar Pradesh
-  'lucknow': { lat: 26.8467, lon: 80.9462, state: 'Uttar Pradesh' },
-  'kanpur': { lat: 26.4499, lon: 80.3319, state: 'Uttar Pradesh' }
+  'pune': { lat: 18.5204, lon: 73.8567, state: 'Maharashtra' }
 };
 
 // Haversine formula to compute straight-line distance in km
@@ -41,6 +65,13 @@ export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c);
+}
+
+// Format exact city/state string (e.g. "Lucknow / UP")
+export function formatCityState(district, state) {
+  const cleanDist = district || DEFAULT_STATE_CITIES[state] || 'Local';
+  const shortState = STATE_SHORT_CODES[state] || state;
+  return `${cleanDist} / ${shortState}`;
 }
 
 // Persist location for offline access
@@ -84,8 +115,8 @@ export async function detectUserLocation() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        let detectedState = 'Madhya Pradesh';
-        let detectedDistrict = 'Indore';
+        let detectedState = 'Uttar Pradesh';
+        let detectedCity = 'Lucknow';
 
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
@@ -95,9 +126,7 @@ export async function detectUserLocation() {
             const data = await res.json();
             const addr = data.address || {};
             if (addr.state) detectedState = addr.state;
-            if (addr.state_district || addr.county || addr.city) {
-              detectedDistrict = addr.state_district || addr.county || addr.city;
-            }
+            detectedCity = addr.city || addr.town || addr.state_district || addr.county || addr.suburb || DEFAULT_STATE_CITIES[detectedState] || 'Local City';
           }
         } catch {
           let minD = Infinity;
@@ -105,7 +134,7 @@ export async function detectUserLocation() {
             const d = calculateDistanceKm(latitude, longitude, coords.lat, coords.lon);
             if (d < minD) {
               minD = d;
-              detectedDistrict = distName;
+              detectedCity = distName.charAt(0).toUpperCase() + distName.slice(1);
               detectedState = coords.state;
             }
           }
@@ -115,7 +144,7 @@ export async function detectUserLocation() {
           latitude,
           longitude,
           state: detectedState,
-          district: detectedDistrict
+          district: detectedCity
         };
 
         saveLastLocation(locResult);
