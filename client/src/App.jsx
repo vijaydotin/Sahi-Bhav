@@ -350,16 +350,16 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)' }}>
-      {/* 1. Header (Exact Match to Reference Mockup) */}
+      {/* 1. Header (Exact Match to Reference Mockup & Mobile Responsive) */}
       <header style={{
         background: '#ffffff',
         borderBottom: '1px solid var(--color-card-border)',
-        padding: '14px 0',
+        padding: '12px 0',
         position: 'sticky',
         top: 0,
         zIndex: 50
       }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <div className="container app-header-container">
           {/* Brand Logo & Tagline */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -375,15 +375,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Center Search Pill with Voice Mic */}
-          <div style={{
-            position: 'relative',
-            width: '280px',
-            maxWidth: '100%',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            <span style={{ position: 'absolute', left: '12px', fontSize: '0.82rem', color: '#94a3b8' }}>🔍</span>
+          {/* Center Search Pill with Voice Mic (Full width on mobile) */}
+          <div className="search-box-wrapper">
+            <span style={{ position: 'absolute', left: '14px', fontSize: '0.85rem', color: '#94a3b8' }}>🔍</span>
             <input
               type="text"
               value={searchQuery}
@@ -391,8 +385,8 @@ export default function App() {
               placeholder={t.searchPlaceholder}
               style={{
                 width: '100%',
-                padding: '8px 36px 8px 32px',
-                fontSize: '0.85rem',
+                padding: '9px 36px 9px 36px',
+                fontSize: '0.88rem',
                 borderRadius: 'var(--radius-full)',
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
@@ -402,14 +396,14 @@ export default function App() {
             <VoiceSearchButton
               lang={lang}
               onResult={(spokenText) => setSearchQuery(spokenText)}
-              style={{ right: '5px', width: '26px', height: '26px', fontSize: '0.8rem' }}
+              style={{ right: '5px', width: '28px', height: '28px', fontSize: '0.85rem' }}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 style={{
                   position: 'absolute',
-                  right: '32px',
+                  right: '34px',
                   color: '#94a3b8',
                   fontSize: '0.8rem',
                   padding: '2px'
@@ -482,22 +476,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* 2. Main Dashboard (2-Column Layout matching Reference Mockup) */}
-      <main className="container" style={{ padding: '24px 20px', flex: 1 }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '270px 1fr',
-          gap: '24px',
-          alignItems: 'flex-start'
-        }}>
+      {/* 2. Main Dashboard (2-Column on Desktop, Clean Swipeable Flow on Mobile) */}
+      <main className="container" style={{ padding: '20px 14px', flex: 1 }}>
+        <div className="app-main-grid">
           {/* LEFT COLUMN: फसल चुनें (Select Crop) */}
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--color-card-border)',
-            padding: '22px 18px',
-            boxShadow: 'var(--shadow-sm)'
-          }}>
+          <div className="crop-sidebar-card">
             <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0' }}>
               {t.selectCrop}
             </h2>
@@ -505,12 +488,8 @@ export default function App() {
               {t.selectCropSub}
             </p>
 
-            {/* 2-Column Crop Cards Grid (10 items) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '12px'
-            }}>
+            {/* Crop Cards Grid (2-Column Desktop, Swipeable Mobile) */}
+            <div className="crop-grid">
               {SIDEBAR_CROPS.map(crop => {
                 const isSelected = selectedCropId === crop.id && !searchQuery;
                 return (
@@ -520,23 +499,10 @@ export default function App() {
                       setSelectedCropId(crop.id);
                       setSearchQuery('');
                     }}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '106px',
-                      padding: '10px 4px',
-                      borderRadius: 'var(--radius-md)',
-                      background: isSelected ? 'var(--color-card-selected-bg)' : '#ffffff',
-                      border: isSelected ? '1.8px solid var(--color-card-selected-border)' : '1px solid var(--color-card-border)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 2px 6px rgba(76, 175, 80, 0.12)' : 'none'
-                    }}
+                    className={`crop-tile ${isSelected ? 'selected' : ''}`}
                   >
                     <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {renderCropIcon(crop.id, 44)}
+                      {renderCropIcon(crop.id, 42)}
                     </div>
                     <span style={{
                       fontSize: '0.92rem',
@@ -553,28 +519,19 @@ export default function App() {
           </div>
 
           {/* RIGHT COLUMN: Hero Rate Banner + Mandis List + Audio Bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* TOP HERO RATE CARD (Matching Reference Design) */}
-            <div style={{
-              background: 'var(--color-hero-bg)',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--color-hero-border)',
-              padding: '26px 36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)'
-            }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+            {/* TOP HERO RATE CARD (Matching Reference Design & Mobile Adaptive) */}
+            <div className="hero-rate-card">
               {/* Left: Illustration, Crop Name & Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {renderCropIcon(activeCropObj.id, 62)}
+                  {renderCropIcon(activeCropObj.id, 56)}
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1.1 }}>
+                  <h2 style={{ fontSize: '2.1rem', fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1.1 }}>
                     {lang === 'hi' ? activeCropObj.name_hi : activeCropObj.name_en}
                   </h2>
-                  <p style={{ fontSize: '0.88rem', color: '#6b7280', margin: '4px 0 0 0', fontWeight: 500 }}>
+                  <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '4px 0 0 0', fontWeight: 500 }}>
                     {new Date().toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
@@ -582,28 +539,28 @@ export default function App() {
 
               {/* Center: Big Price */}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '3rem', fontWeight: 900, color: '#111827', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                <div className="hero-price" style={{ fontSize: '2.9rem', fontWeight: 900, color: '#111827', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   ₹{featuredPrice.toLocaleString('en-IN')}
                 </div>
-                <div style={{ fontSize: '0.95rem', color: '#6b7280', fontWeight: 600, marginTop: '4px' }}>
+                <div style={{ fontSize: '0.92rem', color: '#6b7280', fontWeight: 600, marginTop: '4px' }}>
                   {t.perQuintal}
                 </div>
               </div>
 
               {/* Right: Trend Card Badge */}
-              <div style={{
+              <div className="hero-trend" style={{
                 background: 'var(--color-badge-green)',
-                padding: '14px 24px',
+                padding: '14px 22px',
                 borderRadius: '16px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '1.35rem', color: 'var(--color-badge-green-text)', fontWeight: 800 }}>
+                <span style={{ fontSize: '1.3rem', color: 'var(--color-badge-green-text)', fontWeight: 800 }}>
                   ▲ +₹{featuredTrend}
                 </span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-badge-green-text)', fontWeight: 700, marginTop: '2px' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--color-badge-green-text)', fontWeight: 700, marginTop: '2px' }}>
                   {t.upTrend}
                 </span>
               </div>
@@ -701,51 +658,42 @@ export default function App() {
                     return (
                       <div
                         key={record.id}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1.4fr 1fr 1fr auto',
-                          gap: '14px',
-                          alignItems: 'center',
-                          padding: '16px 20px',
-                          borderRadius: '14px',
-                          background: isSelected ? 'var(--color-card-selected-bg)' : '#ffffff',
-                          border: isSelected ? '2px solid var(--color-card-selected-border)' : '1px solid #f1f5f9',
-                          boxShadow: isSelected ? '0 3px 10px rgba(76, 175, 80, 0.12)' : 'none',
-                          transition: 'all 0.15s ease'
-                        }}
+                        className={`mandi-row-card ${isSelected ? 'selected' : ''}`}
                       >
-                        {/* Mandi Name & Distance */}
-                        <div>
-                          <h4 style={{ fontSize: '1.08rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0' }}>
-                            {mandiTitle}
-                          </h4>
-                          <span style={{ fontSize: '0.84rem', color: '#6b7280', fontWeight: 500 }}>
-                            📍 {record.distance_km === 0 ? (lang === 'hi' ? '0 किमी' : '0 km') : `${record.distance_km} किमी`}
-                          </span>
+                        {/* Mandi Name & Distance (paired with trend on mobile) */}
+                        <div className="mandi-mobile-top">
+                          <div>
+                            <h4 style={{ fontSize: '1.08rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0' }}>
+                              {mandiTitle}
+                            </h4>
+                            <span style={{ fontSize: '0.84rem', color: '#6b7280', fontWeight: 500 }}>
+                              📍 {record.distance_km === 0 ? (lang === 'hi' ? '0 किमी' : '0 km') : `${record.distance_km} किमी`}
+                            </span>
+                          </div>
+
+                          {/* Trend */}
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#166534' }}>
+                              ▲ +₹{dummyDelta}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#166534' }}>
+                              {t.upTrend}
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Price */}
-                        <div>
+                        {/* Price Box */}
+                        <div className="mandi-price-box">
                           <div style={{ fontSize: '1.28rem', fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>
                             ₹{record.modal_price.toLocaleString('en-IN')}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>
-                            {t.perQuintal}
-                          </div>
-                        </div>
-
-                        {/* Trend */}
-                        <div>
-                          <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#166534' }}>
-                            ▲ +₹{dummyDelta}
-                          </div>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#166534' }}>
-                            {t.upTrend}
+                            {t.perQuintal} • (₹{(record.modal_price / 100).toFixed(2)}/kg)
                           </div>
                         </div>
 
                         {/* Action: Compare Selector + View Full Price */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="mandi-actions-group">
                           <button
                             type="button"
                             onClick={(e) => {
