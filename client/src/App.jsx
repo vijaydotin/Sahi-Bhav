@@ -1,31 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import MandiCard from './components/MandiCard.jsx';
+import { CROP_DICTIONARY, findCropByQuery } from './data/cropDictionary.js';
 
 export default function App() {
   const [lang, setLang] = useState('hi'); // 'hi' or 'en'
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCropId, setSelectedCropId] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedForCompare, setSelectedForCompare] = useState([]);
+  const [dataMeta, setDataMeta] = useState(null);
+
+  // Load verified snapshot data on mount
+  useEffect(() => {
+    fetch('/data/mandi_snapshot.json')
+      .then(res => res.json())
+      .then(data => {
+        setRecords(data.records || []);
+        setDataMeta({
+          lastUpdated: data.last_updated,
+          source: data.source_name
+        });
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load mandi snapshot:', err);
+        setLoading(false);
+      });
+  }, []);
 
   const t = {
     hi: {
       appName: 'सही भाव',
       tagline: 'किसान-प्रथम मंडी भाव और सही मुनाफ़ा मार्गदर्शक',
-      searchPlaceholder: 'फसल का नाम खोजें (उदा. गेहूं, सरसों, चना)...',
-      verified: 'सत्यापित मंडी डेटा',
-      offlineReady: 'ऑफ़लाइन सक्षम',
-      compare: 'मंडी तुलना',
-      recentArrivals: 'आज की प्रमुख आवक'
+      searchPlaceholder: 'फसल खोजें (उदा. गेहूं, सरसों, चना, प्याज़)...',
+      allCrops: 'सभी फसलें',
+      verifiedTag: 'आधिकारिक मंडी बुलेटिन',
+      showingResults: 'उपलब्ध भाव रिकॉर्ड',
+      noResults: 'कोई परिणाम नहीं मिला। कृपया अन्य फसल का नाम खोजें।',
+      compareBanner: 'मंडी तुलना पैनल',
+      compareBtn: 'दोनों मंडियों की तुलना करें',
+      clearCompare: 'तुलना हटाएं',
+      lastUpdated: 'अंतिम अपडेट'
     },
     en: {
       appName: 'SahiBhav',
       tagline: 'Farmer-First Mandi Price Transparency & Profit Guide',
-      searchPlaceholder: 'Search crop (e.g. Wheat, Mustard, Gram)...',
-      verified: 'Verified Mandi Data',
-      offlineReady: 'Offline Ready',
-      compare: 'Compare Mandis',
-      recentArrivals: "Today's Key Arrivals"
+      searchPlaceholder: 'Search crop (e.g. Wheat, Mustard, Gram, Onion)...',
+      allCrops: 'All Crops',
+      verifiedTag: 'Official Mandi Bulletin',
+      showingResults: 'Available Price Records',
+      noResults: 'No records found. Please try searching another crop name.',
+      compareBanner: 'Mandi Comparison Panel',
+      compareBtn: 'Compare Selected Mandis',
+      clearCompare: 'Clear Selection',
+      lastUpdated: 'Last Updated'
     }
   }[lang];
 
+  // Filter records based on selected crop filter and search query
+  const filteredRecords = records.filter(record => {
+    // Crop filter pill
+    if (selectedCropId !== 'all' && record.commodity_id !== selectedCropId) {
+      return false;
+    }
+
+    // Search query
+    if (searchQuery.trim()) {
+      const match = findCropByQuery(searchQuery);
+      if (match) {
+        return record.commodity_id === match.id;
+      }
+      const q = searchQuery.toLowerCase();
+      const inHi = record.commodity_hi.toLowerCase().includes(q) || record.market_hi.toLowerCase().includes(q);
+      const inEn = record.commodity_en.toLowerCase().includes(q) || record.market_en.toLowerCase().includes(q);
+      return inHi || inEn;
+    }
+
+    return true;
+  });
+
+  // Toggle selection for comparison
+  const handleToggleCompare = (record) => {
+    if (selectedForCompare.some(r => r.id === record.id)) {
+      setSelectedForCompare(selectedForCompare.filter(r => r.id !== record.id));
+    } else {
+      if (selectedForCompare.length >= 2) {
+        // Replace oldest or keep max 2
+        setSelectedForCompare([selectedForCompare[1], record]);
+      } else {
+        setSelectedForCompare([...selectedForCompare, record]);
+      }
+    }
+  };
+
   return (
-    <div className="app-layout">
+    <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Top Header */}
       <header style={{
         background: 'linear-gradient(180deg, #102219 0%, #09130e 100%)',
@@ -56,7 +126,7 @@ export default function App() {
                   fontWeight: 600,
                   border: '1px solid rgba(34, 197, 94, 0.3)'
                 }}>
-                  🌾 {t.verified}
+                  ✓ {t.verifiedTag}
                 </span>
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', margin: 0 }}>
@@ -86,26 +156,204 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="container" style={{ padding: '24px 16px' }}>
+      {/* Main Content */}
+      <main className="container" style={{ padding: '20px 16px', flex: 1 }}>
+        {/* Search Bar */}
         <div style={{
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-card-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: '20px',
-          textAlign: 'center',
-          boxShadow: 'var(--shadow-sm)'
+          position: 'relative',
+          marginBottom: '16px'
         }}>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--color-accent)' }}>
-            🌱 {t.recentArrivals}
-          </h2>
-          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>
-            {lang === 'hi' 
-              ? 'मंडी भाव व तुलना प्रणाली प्रारंभिक सेटअप में है। अगला चरण: वास्तविक डेटा लोड करना।' 
-              : 'Mandi prices & comparison engine in setup. Next milestone: verified snapshot loading.'}
-          </p>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            style={{
+              width: '100%',
+              padding: '14px 18px',
+              fontSize: '1rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-card-border)',
+              color: 'var(--color-text-main)',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '14px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--color-text-dim)',
+                fontSize: '0.9rem',
+                padding: '4px 8px'
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
+
+        {/* Crop Filter Pills */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          paddingBottom: '8px',
+          marginBottom: '20px'
+        }}>
+          <button
+            onClick={() => { setSelectedCropId('all'); setSearchQuery(''); }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-full)',
+              background: selectedCropId === 'all' && !searchQuery ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: selectedCropId === 'all' && !searchQuery ? '#052e16' : 'var(--color-text-main)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              whiteSpace: 'nowrap',
+              border: '1px solid var(--color-card-border)'
+            }}
+          >
+            🌱 {t.allCrops}
+          </button>
+          {CROP_DICTIONARY.map(crop => (
+            <button
+              key={crop.id}
+              onClick={() => { setSelectedCropId(crop.id); setSearchQuery(''); }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-full)',
+                background: selectedCropId === crop.id ? 'var(--color-primary)' : 'var(--color-surface)',
+                color: selectedCropId === crop.id ? '#052e16' : 'var(--color-text-main)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                whiteSpace: 'nowrap',
+                border: '1px solid var(--color-card-border)'
+              }}
+            >
+              {crop.icon} {lang === 'hi' ? crop.name_hi : crop.name_en}
+            </button>
+          ))}
+        </div>
+
+        {/* Results Count & Meta */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '14px',
+          fontSize: '0.85rem',
+          color: 'var(--color-text-dim)'
+        }}>
+          <span>
+            {t.showingResults}: <strong style={{ color: 'var(--color-primary-light)' }}>{filteredRecords.length}</strong>
+          </span>
+          {dataMeta && (
+            <span>
+              ℹ️ {t.lastUpdated}: 21/10/2026 06:00 AM
+            </span>
+          )}
+        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-dim)' }}>
+            🌾 भाव लोड हो रहे हैं...
+          </div>
+        ) : filteredRecords.length === 0 ? (
+          <div style={{
+            background: 'var(--color-card)',
+            border: '1px dashed var(--color-card-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '40px 20px',
+            textAlign: 'center',
+            color: 'var(--color-text-dim)'
+          }}>
+            <p style={{ fontSize: '1.1rem', marginBottom: '8px' }}>🌾 {t.noResults}</p>
+          </div>
+        ) : (
+          /* Cards Grid */
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: '16px'
+          }}>
+            {filteredRecords.map(record => (
+              <MandiCard
+                key={record.id}
+                record={record}
+                lang={lang}
+                isSelectedForCompare={selectedForCompare.some(r => r.id === record.id)}
+                onToggleCompare={handleToggleCompare}
+              />
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* Floating Comparison Drawer if 1 or 2 mandis selected */}
+      {selectedForCompare.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '16px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 32px)',
+          maxWidth: '800px',
+          background: 'linear-gradient(180deg, #162f22 0%, #0d1b13 100%)',
+          border: '2px solid var(--color-primary)',
+          borderRadius: 'var(--radius-md)',
+          padding: '14px 18px',
+          boxShadow: 'var(--shadow-lg)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary-light)' }}>
+              ⚖️ {t.compareBanner} ({selectedForCompare.length}/2)
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-main)', marginTop: '2px' }}>
+              {selectedForCompare.map(r => lang === 'hi' ? r.market_hi : r.market_en).join('  vs  ')}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setSelectedForCompare([])}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'rgba(255,255,255,0.08)',
+                color: 'var(--color-text-dim)',
+                fontSize: '0.75rem'
+              }}
+            >
+              ✕ {t.clearCompare}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Simple Footer */}
+      <footer style={{
+        borderTop: '1px solid var(--color-card-border)',
+        padding: '16px 0',
+        textAlign: 'center',
+        fontSize: '0.78rem',
+        color: 'var(--color-text-dim)',
+        background: 'var(--color-surface)'
+      }}>
+        <div className="container">
+          SahiBhav 🌾 • {lang === 'hi' ? 'किसानों के लिए पारदर्शी मंडी भाव पहल' : 'Open Transparent Mandi Price Initiative'}
+        </div>
+      </footer>
     </div>
   );
 }
