@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getGeminiComparisonExplanation } from '../services/aiAdvisorService.js';
 
 export default function ComparisonModal({ mandis, lang, onClose }) {
   if (!mandis || mandis.length < 2) return null;
@@ -8,6 +9,10 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
   // Farmer inputs for Net Profit calculation
   const [quantityQtl, setQuantityQtl] = useState(25); // 25 Quintals
   const [transitCostPerKm, setTransitCostPerKm] = useState(20); // ₹20/km
+
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const priceA = mandiA.modal_price || 0;
   const priceB = mandiB.modal_price || 0;
@@ -22,7 +27,6 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
   const transitDiffTotal = Math.round(distDiff * transitCostPerKm);
 
   // Net Profit determination
-  // If Mandi A has higher price but is further:
   let netGain = 0;
   let recommendedMandi = null;
 
@@ -36,28 +40,80 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
     recommendedMandi = netGain > 0 ? mandiB : mandiA;
   }
 
-  const isNetPositive = netGain > 0;
   const winnerName = lang === 'hi' ? recommendedMandi.market_hi : recommendedMandi.market_en;
+
+  // Fetch Gemini explanation on mount and whenever parameters change
+  useEffect(() => {
+    let isCurrent = true;
+    setIsAiLoading(true);
+
+    getGeminiComparisonExplanation({
+      mandiA: lang === 'hi' ? mandiA.market_hi : mandiA.market_en,
+      mandiB: lang === 'hi' ? mandiB.market_hi : mandiB.market_en,
+      commodity: lang === 'hi' ? (mandiA.commodity_hi || mandiA.commodity_en) : mandiA.commodity_en,
+      priceA,
+      priceB,
+      distA,
+      distB,
+      quantityQtl,
+      netGain,
+      recommendedMandiName: winnerName,
+      lang
+    }).then(res => {
+      if (isCurrent) {
+        setAiAdvice(res.text);
+        setIsAiLoading(false);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [mandiA, mandiB, quantityQtl, transitCostPerKm, lang, winnerName, netGain]);
+
+  // Read aloud TTS
+  const handleSpeakAdvice = () => {
+    if (!window.speechSynthesis || !aiAdvice) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(aiAdvice);
+    utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+    utterance.rate = 0.95;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   // Share summary via WhatsApp
   const handleShareWhatsApp = () => {
     const text = lang === 'hi' 
       ? `🌾 *सही भाव (SahiBhav) मंडी तुलना रिपोर्ट*\n\n` +
-        `📍 *मंडी 1:* ${mandiA.market_hi} - ₹${priceA}/क्विंटल (${distA} km)\n` +
-        `📍 *मंडी 2:* ${mandiB.market_hi} - ₹${priceB}/क्विंटल (${distB} km)\n\n` +
+        `📍 *मंडी 1:* ${mandiA.market_hi} - ₹${priceA}/क्विंटल (~${distA} km)\n` +
+        `📍 *मंडी 2:* ${mandiB.market_hi} - ₹${priceB}/क्विंटल (~${distB} km)\n\n` +
         `⚖️ *भाव अंतर:* ₹${Math.abs(priceDiffPerQtl)}/क्विंटल\n` +
         `🚚 *कुल मात्रा:* ${quantityQtl} क्विंटल\n` +
         `💰 *अनुमानित शुद्ध मुनाफ़ा:* ₹${Math.abs(netGain).toLocaleString('en-IN')}\n\n` +
-        `✅ *सलाह:* ${winnerName} में बेचना अधिक फायदेमंद है।\n` +
-        `_स्रोत: data.gov.in (कृषि मंत्रालय, भारत सरकार)_`
+        `🤖 *जेमिनी एआई सलाह:* ${aiAdvice || winnerName + ' जाना अधिक फायदेमंद रहेगा।'}\n\n` +
+        `_सत्यापित स्रोत: data.gov.in (कृषि मंत्रालय, भारत सरकार)_`
       : `🌾 *SahiBhav Mandi Comparison Report*\n\n` +
         `📍 *Market 1:* ${mandiA.market_en} - ₹${priceA}/qtl (~${distA} km)\n` +
         `📍 *Market 2:* ${mandiB.market_en} - ₹${priceB}/qtl (~${distB} km)\n\n` +
         `⚖️ *Price Delta:* ₹${Math.abs(priceDiffPerQtl)}/qtl\n` +
         `🚚 *Harvest Quantity:* ${quantityQtl} Quintals\n` +
         `💰 *Estimated Net Profit:* ₹${Math.abs(netGain).toLocaleString('en-IN')}\n\n` +
-        `✅ *Recommendation:* Selling at ${winnerName} gives the best return after transport.\n` +
-        `_Source: data.gov.in (Ministry of Agriculture)_`;
+        `🤖 *Gemini AI Insight:* ${aiAdvice || 'Selling at ' + winnerName + ' gives the best return.'}\n\n` +
+        `_Verified Source: data.gov.in (Ministry of Agriculture)_`;
 
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
@@ -116,7 +172,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
         <h2 style={{ fontSize: '1.4rem', color: 'var(--color-primary-light)', marginBottom: '4px' }}>
           ⚖️ {lang === 'hi' ? 'मंडी तुलना व सही मुनाफ़ा कैलकुलेटर' : 'Mandi Comparison & Net Profit Engine'}
         </h2>
-        <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '20px' }}>
+        <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '18px' }}>
           {lang === 'hi' 
             ? 'परिवहन लागत व फसल मात्रा को जोड़कर वास्तविक जेब में आने वाले मुनाफ़े की गणना' 
             : 'Deterministic take-home profit calculated after transit distance and fuel expenses'}
@@ -127,7 +183,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '16px',
-          marginBottom: '20px'
+          marginBottom: '18px'
         }}>
           {/* Mandi A */}
           <div style={{
@@ -184,7 +240,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
           border: '1px solid var(--color-card-border)',
           borderRadius: 'var(--radius-md)',
           padding: '16px',
-          marginBottom: '20px',
+          marginBottom: '18px',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '16px'
@@ -236,53 +292,91 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
           </div>
         </div>
 
-        {/* The Result / Sahi Munafa Decision Box */}
+        {/* ✨ Gemini AI Advisor Box */}
         <div style={{
-          background: 'linear-gradient(180deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 34, 25, 0.4) 100%)',
-          border: '2px solid var(--color-primary)',
+          background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(99, 102, 241, 0.12) 100%)',
+          border: '1px solid rgba(34, 197, 94, 0.4)',
           borderRadius: 'var(--radius-md)',
-          padding: '20px',
-          marginBottom: '20px'
+          padding: '16px 18px',
+          marginBottom: '18px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 700, textTransform: 'uppercase' }}>
-                💡 {lang === 'hi' ? 'सही फ़ैसला (Sahi Decision)' : 'Smart Selling Recommendation'}
-              </span>
-              <h3 style={{ fontSize: '1.25rem', color: '#fff', margin: '4px 0' }}>
-                {winnerName} {lang === 'hi' ? 'जाना अधिक लाभदायक रहेगा' : 'is the most profitable mandi'}
-              </h3>
-              <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', margin: 0 }}>
-                {lang === 'hi' 
-                  ? `परिवहन खर्च काटने के बाद भी ₹${Math.abs(netGain).toLocaleString('en-IN')} का शुद्ध अतिरिक्त मुनाफ़ा होगा।`
-                  : `Even after transit fuel expenses, you will earn an extra net ₹${Math.abs(netGain).toLocaleString('en-IN')}.`}
-              </p>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              color: 'var(--color-primary-light)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              ✨ {lang === 'hi' ? 'जेमिनी एआई किसान सलाहकार (Gemini 3.5 Flash Lite)' : 'Gemini 3.5 Flash Lite AI Advisor'}
+            </span>
 
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
-                {lang === 'hi' ? 'शुद्ध मुनाफ़ा अंतर' : 'Net Take-Home Gain'}
-              </span>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
-                +₹{Math.abs(netGain).toLocaleString('en-IN')}
-              </div>
+            <button
+              onClick={handleSpeakAdvice}
+              disabled={isAiLoading || !aiAdvice}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                background: isSpeaking ? '#ef4444' : 'rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              {isSpeaking ? '⏹️ ' + (lang === 'hi' ? 'रोकें' : 'Stop') : '🔊 ' + (lang === 'hi' ? 'सुनो' : 'Listen')}
+            </button>
+          </div>
+
+          <p style={{
+            fontSize: '0.92rem',
+            color: '#f0fdf4',
+            margin: 0,
+            lineHeight: 1.5,
+            fontStyle: isAiLoading ? 'italic' : 'normal'
+          }}>
+            {isAiLoading 
+              ? (lang === 'hi' ? '✨ जेमिनी एआई सलाह तैयार कर रहा है...' : '✨ Gemini AI is generating guidance...') 
+              : `"${aiAdvice}"`}
+          </p>
+        </div>
+
+        {/* Decision & Financial Breakdown */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.35)',
+          border: '1px solid var(--color-card-border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '16px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
+              {lang === 'hi' ? 'अनुशंसित मंडी' : 'Recommended Market'}
+            </span>
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
+              {winnerName}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '2px' }}>
+              ⚖️ {lang === 'hi' ? 'भाव अंतर' : 'Price Delta'}: ₹{Math.abs(priceDiffPerQtl)}/qtl • 📍 {lang === 'hi' ? 'दूरी अंतर' : 'Distance Delta'}: ~{distDiff} km
             </div>
           </div>
 
-          {/* Transparent formula breakdown */}
-          <div style={{
-            marginTop: '16px',
-            paddingTop: '12px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-            fontSize: '0.78rem',
-            color: 'var(--color-text-dim)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '16px'
-          }}>
-            <span>⚖️ {lang === 'hi' ? 'भाव अंतर' : 'Rate Delta'}: ₹{Math.abs(priceDiffPerQtl)}/क्विंटल</span>
-            <span>📍 {lang === 'hi' ? 'दूरी अंतर' : 'Distance Delta'}: ~{distDiff} km</span>
-            <span>🚚 {lang === 'hi' ? 'कुल परिवहन अंतर' : 'Transit Cost Delta'}: ₹{transitDiffTotal}</span>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
+              {lang === 'hi' ? 'शुद्ध मुनाफ़ा अंतर' : 'Net Take-Home Gain'}
+            </span>
+            <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
+              +₹{Math.abs(netGain).toLocaleString('en-IN')}
+            </div>
           </div>
         </div>
 
