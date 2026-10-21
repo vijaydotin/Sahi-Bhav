@@ -1,0 +1,70 @@
+:root {
+  --font-primary: 'Mukta', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-en: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Agricultural Palette (High Contrast Sunlight & Outdoor optimized) */
+  --color-bg: #09130e;
+  --color-surface: #102219;
+  --color-surface-hover: #162f22;
+  --color-card: #142a1f;
+  --color-card-border: #1f4231;
+  --color-primary: #22c55e;
+  --color-primary-dark: #15803d;
+  --color-primary-light: #86efac;
+  --color-accent: #f59e0b; /* Golden Wheat */
+  --color-accent-soft: rgba(245, 158, 11, 0.15);
+  
+  --color-text-main: #f0fdf4;
+  --color-text-muted: #86efac;
+  --color-text-dim: #94a3b8;
+  
+  --color-tag-verified: #166534;
+  --color-tag-cached: #854d0e;
+  --color-danger: #ef4444;
+  --color-success: #10b981;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: var(--transition);
+}
+
+input, select {
+  font-family: inherit;
+  border: none;
+  outline: none;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}

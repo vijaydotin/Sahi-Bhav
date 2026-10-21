@@ -1,0 +1,17 @@
+{
+  "short_name": "SahiBhav",
+  "name": "SahiBhav - सही भाव (Mandi Price Assistant)",
+  "icons": [
+    {
+      "src": "/icon.jpeg",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0d1b13",
+  "theme_color": "#15803d",
+  "display": "standalone",
+  "orientation": "portrait"
+}
