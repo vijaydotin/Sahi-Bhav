@@ -202,7 +202,10 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
               📍 {mandiA.district}, {mandiA.state} • ~{distA} km
             </p>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
-              ₹{priceA.toLocaleString('en-IN')}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}> / qtl</span>
+              ₹{priceA.toLocaleString('en-IN')}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}> / {lang === 'hi' ? 'क्विंटल' : 'qtl'}</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-accent)', fontWeight: 600 }}>
+              ≈ ₹{(priceA / 100).toFixed(2)} / {lang === 'hi' ? 'किलो (kg)' : 'kg'}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '4px' }}>
               {mandiA.commodity_hi || mandiA.commodity_en} ({mandiA.variety})
@@ -226,7 +229,10 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
               📍 {mandiB.district}, {mandiB.state} • ~{distB} km
             </p>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
-              ₹{priceB.toLocaleString('en-IN')}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}> / qtl</span>
+              ₹{priceB.toLocaleString('en-IN')}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}> / {lang === 'hi' ? 'क्विंटल' : 'qtl'}</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-accent)', fontWeight: 600 }}>
+              ≈ ₹{(priceB / 100).toFixed(2)} / {lang === 'hi' ? 'किलो (kg)' : 'kg'}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '4px' }}>
               {mandiB.commodity_hi || mandiB.commodity_en} ({mandiB.variety})
@@ -247,7 +253,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
         }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--color-text-dim)', marginBottom: '6px' }}>
-              🌾 {lang === 'hi' ? 'फसल की कुल मात्रा (क्विंटल):' : 'Estimated Harvest Quantity (Quintals):'}
+              🌾 {lang === 'hi' ? `फसल मात्रा: ${quantityQtl} क्विंटल (${(quantityQtl * 100).toLocaleString('en-IN')} कि.ग्रा.)` : `Quantity: ${quantityQtl} Quintals (${(quantityQtl * 100).toLocaleString('en-IN')} kg)`}
             </label>
             <input
               type="number"

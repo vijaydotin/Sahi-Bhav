@@ -4,6 +4,15 @@ export default function MandiCard({ record, lang, isSelectedForCompare, onToggle
   const isAboveMsp = record.msp && record.modal_price >= record.msp;
   const mspDiff = record.msp ? record.modal_price - record.msp : null;
 
+  // Weight catalog conversions
+  const modalPrice = record.modal_price || 0;
+  const minPrice = record.min_price || 0;
+  const maxPrice = record.max_price || 0;
+
+  const perKgModal = (modalPrice / 100).toFixed(2);
+  const perKgMin = (minPrice / 100).toFixed(1);
+  const perKgMax = (maxPrice / 100).toFixed(1);
+
   return (
     <div style={{
       background: 'var(--color-card)',
@@ -48,25 +57,39 @@ export default function MandiCard({ record, lang, isSelectedForCompare, onToggle
         </button>
       </div>
 
-      {/* Commodity & Variety */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Commodity, Variety & Standard Weight Unit */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{
+            fontSize: '0.85rem',
+            padding: '3px 10px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--color-surface)',
+            color: 'var(--color-accent)',
+            fontWeight: 600,
+            border: '1px solid var(--color-card-border)'
+          }}>
+            {lang === 'hi' ? record.commodity_hi : record.commodity_en}
+          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
+            {lang === 'hi' ? `किस्म: ${record.variety}` : `Variety: ${record.variety}`}
+          </span>
+        </div>
+
+        {/* Weight Unit Badge */}
         <span style={{
-          fontSize: '0.85rem',
-          padding: '3px 10px',
+          fontSize: '0.72rem',
+          color: 'var(--color-primary-light)',
+          background: 'rgba(34, 197, 94, 0.1)',
+          padding: '2px 8px',
           borderRadius: 'var(--radius-sm)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-accent)',
-          fontWeight: 600,
-          border: '1px solid var(--color-card-border)'
+          border: '1px solid rgba(34, 197, 94, 0.25)'
         }}>
-          {lang === 'hi' ? record.commodity_hi : record.commodity_en}
-        </span>
-        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
-          {lang === 'hi' ? `किस्म: ${record.variety}` : `Variety: ${record.variety}`}
+          ⚖️ {lang === 'hi' ? 'मानक: ₹ / क्विंटल (100 कि.ग्रा.)' : 'Std: ₹ / Quintal (100 kg)'}
         </span>
       </div>
 
-      {/* Modal Price (The Main Big Number) */}
+      {/* Modal Price (Dual Catalog: ₹ / Quintal & ₹ / kg) */}
       <div style={{
         background: 'rgba(0, 0, 0, 0.25)',
         borderRadius: 'var(--radius-sm)',
@@ -78,25 +101,32 @@ export default function MandiCard({ record, lang, isSelectedForCompare, onToggle
       }}>
         <div>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {lang === 'hi' ? 'मॉडल भाव (औसत)' : 'Modal Price'}
+            {lang === 'hi' ? 'मॉडल भाव (नीलामी दर)' : 'Modal Auction Rate'}
           </span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
             <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
-              ₹{record.modal_price.toLocaleString('en-IN')}
+              ₹{modalPrice.toLocaleString('en-IN')}
             </span>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
               / {lang === 'hi' ? 'क्विंटल' : 'qtl'}
             </span>
           </div>
+          {/* Per Kg Conversion Subtitle */}
+          <div style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 600, marginTop: '2px' }}>
+            ≈ ₹{perKgModal} / {lang === 'hi' ? 'किलो (kg)' : 'kg'}
+          </div>
         </div>
 
-        {/* Range Min - Max */}
+        {/* Range Min - Max in ₹/qtl and ₹/kg */}
         <div style={{ textAlign: 'right' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
             {lang === 'hi' ? 'न्यूनतम - अधिकतम' : 'Min - Max Range'}
           </span>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-main)' }}>
-            ₹{record.min_price} - ₹{record.max_price}
+          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
+            ₹{minPrice} - ₹{maxPrice} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>/ qtl</span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '2px' }}>
+            (₹{perKgMin} - ₹{perKgMax} / kg)
           </div>
         </div>
       </div>
@@ -111,7 +141,10 @@ export default function MandiCard({ record, lang, isSelectedForCompare, onToggle
             alignItems: 'center',
             gap: '4px'
           }}>
-            {isAboveMsp ? '▲' : '▼'} {lang === 'hi' ? 'एम.एस.पी. से' : 'vs MSP'} {mspDiff >= 0 ? `+₹${mspDiff}` : `-₹${Math.abs(mspDiff)}`} (MSP: ₹{record.msp})
+            {isAboveMsp ? '▲' : '▼'} {lang === 'hi' ? 'एम.एस.पी. से' : 'vs MSP'} {mspDiff >= 0 ? `+₹${mspDiff}` : `-₹${Math.abs(mspDiff)}`} 
+            <span style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem' }}>
+              (MSP: ₹{record.msp}/qtl • ₹{(record.msp / 100).toFixed(2)}/kg)
+            </span>
           </span>
         ) : (
           <span style={{ color: 'var(--color-text-dim)' }}>
