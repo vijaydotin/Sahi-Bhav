@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import MandiCard from './components/MandiCard.jsx';
 import { CROP_DICTIONARY, findCropByQuery } from './data/cropDictionary.js';
 import { fetchLiveGovPrices } from './services/govPriceService.js';
+import { detectUserLocation, calculateDistanceKm, DISTRICT_COORDINATES } from './services/locationService.js';
+import { saveSyncedData, getCachedStateData, getLastSyncTime, getRelativeTimeString } from './services/syncService.js';
 
 const STATES = [
   'Madhya Pradesh',
@@ -17,6 +19,7 @@ export default function App() {
   const [lang, setLang] = useState('hi'); // 'hi' or 'en'
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selectedCropId, setSelectedCropId] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedForCompare, setSelectedForCompare] = useState([]);
@@ -24,15 +27,64 @@ export default function App() {
   const [selectedState, setSelectedState] = useState('Madhya Pradesh');
   const [dataSourceMode, setDataSourceMode] = useState('live'); // 'live' or 'offline'
   const [liveStatusText, setLiveStatusText] = useState('');
+  const [userLocation, setUserLocation] = useState(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [lastSyncString, setLastSyncString] = useState('');
 
-  // Fetch prices based on mode
+  // Update relative sync time periodically
+  useEffect(() => {
+    const updateSyncLabel = () => {
+      const last = getLastSyncTime();
+      setLastSyncString(getRelativeTimeString(last, lang));
+    };
+    updateSyncLabel();
+    const interval = setInterval(updateSyncLabel, 30000);
+    return () => clearInterval(interval);
+  }, [lang]);
+
+  // Handle Location Detection
+  const handleDetectLocation = async () => {
+    setDetectingLocation(true);
+    try {
+      const loc = await detectUserLocation();
+      setUserLocation(loc);
+      if (loc.state && STATES.includes(loc.state)) {
+        setSelectedState(loc.state);
+      }
+    } catch (err) {
+      console.warn('Geolocation permission denied or timed out:', err.message);
+      alert(lang === 'hi' 
+        ? 'स्थान अनुमति प्राप्त नहीं हुई। कृपया सूची से अपना राज्य चुनें।' 
+        : 'Location access denied or unavailable. Please select your state manually.');
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
+
+  // Fetch prices based on mode with auto-caching
   const loadPrices = async (mode = dataSourceMode, state = selectedState) => {
     setLoading(true);
+    setSyncing(true);
 
     if (mode === 'live') {
       const result = await fetchLiveGovPrices({ state, limit: 80 });
       if (result.success && result.records.length > 0) {
-        setRecords(result.records);
+        // Compute distance dynamically if user location is available
+        const enhancedRecords = result.records.map(r => {
+          if (userLocation && r.district) {
+            const distKey = r.district.toLowerCase();
+            const coord = DISTRICT_COORDINATES[distKey];
+            if (coord) {
+              const d = calculateDistanceKm(userLocation.latitude, userLocation.longitude, coord.lat, coord.lon);
+              return { ...r, distance_km: d };
+            }
+          }
+          return r;
+        });
+
+        // Save to offline storage
+        saveSyncedData(state, enhancedRecords, result.totalLive);
+        setRecords(enhancedRecords);
         setDataMeta({
           isLive: true,
           total: result.totalLive,
@@ -40,15 +92,29 @@ export default function App() {
           updatedDate: result.updatedDate
         });
         setLiveStatusText(lang === 'hi' ? `सरकारी पोर्टल पर कुल ${result.totalLive} रिकॉर्ड उपलब्ध` : `${result.totalLive} live records on data.gov.in`);
+        setLastSyncString(getRelativeTimeString(new Date().toISOString(), lang));
         setLoading(false);
+        setSyncing(false);
         return;
-      } else {
-        console.warn('Live API unavailable or empty, falling back to local snapshot');
-        setLiveStatusText(lang === 'hi' ? 'लाइव सर्वर व्यस्त, ऑफ़लाइन स्नैपशॉट लोड हुआ' : 'Live server busy, loaded snapshot');
       }
     }
 
-    // Fallback or explicit offline mode
+    // Check local cached state data first
+    const cached = getCachedStateData(state);
+    if (cached && cached.records && cached.records.length > 0) {
+      setRecords(cached.records);
+      setDataMeta({
+        isLive: false,
+        source: 'स्थानीय कैश्ड सरकारी डेटा (Local Cache)',
+        updatedDate: cached.timestamp
+      });
+      setLiveStatusText(lang === 'hi' ? 'ऑफ़लाइन लोकल कैश्ड डेटा लोड हुआ' : 'Loaded from offline synced cache');
+      setLoading(false);
+      setSyncing(false);
+      return;
+    }
+
+    // Fallback to static snapshot
     fetch('/data/mandi_snapshot.json')
       .then(res => res.json())
       .then(data => {
@@ -59,10 +125,12 @@ export default function App() {
           updatedDate: data.last_updated
         });
         setLoading(false);
+        setSyncing(false);
       })
       .catch(err => {
         console.error('Failed to load mandi snapshot:', err);
         setLoading(false);
+        setSyncing(false);
       });
   };
 
@@ -80,13 +148,15 @@ export default function App() {
       showingResults: 'उपलब्ध भाव रिकॉर्ड',
       noResults: 'इस राज्य/फसल में कोई रिकॉर्ड नहीं मिला। कृपया अन्य फसल या राज्य चुनें।',
       compareBanner: 'मंडी तुलना पैनल',
-      compareBtn: 'दोनों मंडियों की तुलना करें',
       clearCompare: 'तुलना हटाएं',
       lastUpdated: 'अंतिम अपडेट',
       liveBadge: '🟢 लाइव सरकारी डेटा (data.gov.in)',
       offlineBadge: '📶 ऑफ़लाइन बैकअप स्नैपशॉट',
-      refresh: 'ताज़ा करें',
-      stateLabel: 'राज्य चुनें'
+      refresh: 'सिंक करें',
+      detectLoc: '📍 मेरी लोकेशन पहचानें',
+      detecting: 'लोकेशन पहचानी जा रही है...',
+      nearestMandi: 'निकटतम मंडी',
+      syncedLabel: 'डेटा सिंक'
     },
     en: {
       appName: 'SahiBhav',
@@ -97,13 +167,15 @@ export default function App() {
       showingResults: 'Available Price Records',
       noResults: 'No records found for this crop/state. Please try another selection.',
       compareBanner: 'Mandi Comparison Panel',
-      compareBtn: 'Compare Selected Mandis',
       clearCompare: 'Clear Selection',
       lastUpdated: 'Last Updated',
       liveBadge: '🟢 Live Gov Feed (data.gov.in)',
       offlineBadge: '📶 Offline Snapshot Backup',
-      refresh: 'Refresh Live',
-      stateLabel: 'Select State'
+      refresh: 'Sync Live',
+      detectLoc: '📍 Auto Detect Location',
+      detecting: 'Detecting Location...',
+      nearestMandi: 'Nearest Mandis',
+      syncedLabel: 'Data Sync'
     }
   }[lang];
 
@@ -176,6 +248,20 @@ export default function App() {
                 }}>
                   {dataMeta?.isLive ? t.liveBadge : t.offlineBadge}
                 </span>
+
+                {/* Last Synced Pill */}
+                {lastSyncString && (
+                  <span style={{
+                    fontSize: '0.7rem',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'var(--color-text-dim)',
+                    border: '1px solid var(--color-card-border)'
+                  }}>
+                    ⚡ {lastSyncString}
+                  </span>
+                )}
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', margin: 0 }}>
                 {t.tagline}
@@ -199,7 +285,7 @@ export default function App() {
                 fontWeight: 600
               }}
             >
-              {dataSourceMode === 'live' ? '🟢 Live API' : '📶 Offline'}
+              {dataSourceMode === 'live' ? '🟢 Live' : '📶 Offline'}
             </button>
 
             {/* Language Switcher */}
@@ -226,11 +312,11 @@ export default function App() {
 
       {/* Main Content */}
       <main className="container" style={{ padding: '20px 16px', flex: 1 }}>
-        {/* Controls Bar: Search & State Select */}
+        {/* Controls Bar: Search, Auto Location, State Select */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr auto',
-          gap: '12px',
+          gridTemplateColumns: '1fr auto auto',
+          gap: '10px',
           marginBottom: '16px'
         }}>
           {/* Search Bar */}
@@ -268,6 +354,27 @@ export default function App() {
               </button>
             )}
           </div>
+
+          {/* Auto Detect Location Button */}
+          <button
+            onClick={handleDetectLocation}
+            disabled={detectingLocation}
+            style={{
+              padding: '0 16px',
+              borderRadius: 'var(--radius-md)',
+              background: userLocation ? 'rgba(34, 197, 94, 0.15)' : 'var(--color-surface)',
+              border: userLocation ? '1px solid var(--color-primary)' : '1px solid var(--color-card-border)',
+              color: userLocation ? 'var(--color-primary-light)' : 'var(--color-text-main)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {detectingLocation ? t.detecting : userLocation ? `📍 ${userLocation.district || userLocation.state}` : t.detectLoc}
+          </button>
 
           {/* State Dropdown Filter */}
           <select
@@ -356,6 +463,7 @@ export default function App() {
           
           <button
             onClick={() => loadPrices(dataSourceMode, selectedState)}
+            disabled={syncing}
             style={{
               color: 'var(--color-primary-light)',
               fontSize: '0.8rem',
@@ -365,14 +473,14 @@ export default function App() {
               gap: '4px'
             }}
           >
-            🔄 {t.refresh}
+            🔄 {syncing ? 'सिंक हो रहा है...' : t.refresh}
           </button>
         </div>
 
         {/* Loading Spinner */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-primary-light)' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '12px', animation: 'spin 1s infinite' }}>🌾</div>
+            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🌾</div>
             <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
               {lang === 'hi' ? 'data.gov.in से लाइव सरकारी मंडी भाव लोड हो रहे हैं...' : 'Fetching live government mandi prices from data.gov.in...'}
             </p>
@@ -454,7 +562,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Simple Footer */}
+      {/* Footer */}
       <footer style={{
         borderTop: '1px solid var(--color-card-border)',
         padding: '16px 0',
