@@ -181,11 +181,11 @@ export const ChanaIcon = ({ size = 48 }) => (
   </svg>
 );
 
-export const MoreCropsIcon = ({ size = 48 }) => (
+export const MoreCropsIcon = ({ size = 48, color = 'var(--color-text-dim)' }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="16" cy="32" r="5" fill="#1e293b"/>
-    <circle cx="32" cy="32" r="5" fill="#1e293b"/>
-    <circle cx="48" cy="32" r="5" fill="#1e293b"/>
+    <circle cx="16" cy="32" r="5" fill={color}/>
+    <circle cx="32" cy="32" r="5" fill={color}/>
+    <circle cx="48" cy="32" r="5" fill={color}/>
   </svg>
 );
 

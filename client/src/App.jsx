@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ComparisonModal from './components/ComparisonModal.jsx';
 import VoiceSearchButton from './components/VoiceSearchButton.jsx';
+import ThemeToggle from './components/ThemeToggle.jsx';
 import {
   LogoSprout,
   WheatIcon,
@@ -63,6 +64,14 @@ const SIDEBAR_CROPS = [
 
 export default function App() {
   const [lang, setLang] = useState(() => getUserPreference('lang', 'hi')); // Persisted
+  const [theme, setTheme] = useState(() => {
+    const saved = getUserPreference('theme', null);
+    if (saved) return saved;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCropId, setSelectedCropId] = useState(() => getUserPreference('crop', 'wheat')); // Persisted
@@ -91,6 +100,20 @@ export default function App() {
   useEffect(() => {
     saveUserPreference('lang', lang);
   }, [lang]);
+
+  useEffect(() => {
+    saveUserPreference('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   useEffect(() => {
     saveUserPreference('crop', selectedCropId);
@@ -392,24 +415,25 @@ export default function App() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)' }}>
       {/* 1. Header (Exact Match to Reference Mockup & Mobile Responsive) */}
       <header style={{
-        background: '#ffffff',
-        borderBottom: '1px solid var(--color-card-border)',
+        background: 'var(--color-header-bg)',
+        borderBottom: '1px solid var(--color-header-border)',
         padding: '12px 0',
         position: 'sticky',
         top: 0,
-        zIndex: 50
+        zIndex: 50,
+        transition: 'background-color 0.25s ease, border-color 0.25s ease'
       }}>
         <div className="container app-header-container">
           {/* Brand Logo & Tagline */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <LogoSprout size={36} color="#111827" />
+              <LogoSprout size={36} color={theme === 'dark' ? '#4ade80' : '#14532d'} />
             </div>
             <div>
-              <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1.15 }}>
+              <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0, lineHeight: 1.15 }}>
                 {t.appName}
               </h1>
-              <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: 0 }}>
+              <p style={{ fontSize: '0.82rem', color: 'var(--color-text-dim)', margin: 0 }}>
                 {t.tagline}
               </p>
             </div>
@@ -417,7 +441,7 @@ export default function App() {
 
           {/* Center Search Pill with Voice Mic (Full width on mobile) */}
           <div className="search-box-wrapper">
-            <span style={{ position: 'absolute', left: '14px', fontSize: '0.85rem', color: '#94a3b8' }}>🔍</span>
+            <span style={{ position: 'absolute', left: '14px', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>🔍</span>
             <input
               type="text"
               value={searchQuery}
@@ -428,9 +452,10 @@ export default function App() {
                 padding: '9px 36px 9px 36px',
                 fontSize: '0.88rem',
                 borderRadius: 'var(--radius-full)',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#111827'
+                background: 'var(--color-input-bg)',
+                border: '1px solid var(--color-input-border)',
+                color: 'var(--color-text-main)',
+                transition: 'var(--transition)'
               }}
             />
             <VoiceSearchButton
@@ -444,7 +469,7 @@ export default function App() {
                 style={{
                   position: 'absolute',
                   right: '34px',
-                  color: '#94a3b8',
+                  color: 'var(--color-text-dim)',
                   fontSize: '0.8rem',
                   padding: '2px'
                 }}
@@ -454,8 +479,8 @@ export default function App() {
             )}
           </div>
 
-          {/* Right Header: Live Indicator & Segmented Language Control */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Right Header: Live Indicator, Language Capsule, and Theme Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* Live Indicator Pill */}
             <div 
               onClick={() => setDataSourceMode(dataSourceMode === 'live' ? 'offline' : 'live')}
@@ -470,7 +495,8 @@ export default function App() {
                 color: dataSourceMode === 'live' ? 'var(--color-badge-green-text)' : 'var(--color-tag-cached-text)',
                 fontSize: '0.85rem',
                 fontWeight: 700,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'var(--transition)'
               }}
             >
               <span style={{ fontSize: '0.65rem' }}>●</span>
@@ -480,18 +506,19 @@ export default function App() {
             {/* Language Capsule [ हिंदी | EN ] */}
             <div style={{
               display: 'flex',
-              background: '#f1f5f9',
+              background: 'var(--color-segmented-bg)',
               borderRadius: '8px',
               padding: '3px',
-              border: '1px solid #e2e8f0'
+              border: '1px solid var(--color-segmented-border)',
+              transition: 'var(--transition)'
             }}>
               <button
                 onClick={() => setLang('hi')}
                 style={{
                   padding: '5px 12px',
                   borderRadius: '6px',
-                  background: lang === 'hi' ? '#0f3e1f' : 'transparent',
-                  color: lang === 'hi' ? '#ffffff' : '#475569',
+                  background: lang === 'hi' ? 'var(--color-btn-dark)' : 'transparent',
+                  color: lang === 'hi' ? 'var(--color-btn-dark-text)' : 'var(--color-text-muted)',
                   fontWeight: 700,
                   fontSize: '0.85rem'
                 }}
@@ -503,8 +530,8 @@ export default function App() {
                 style={{
                   padding: '5px 12px',
                   borderRadius: '6px',
-                  background: lang === 'en' ? '#0f3e1f' : 'transparent',
-                  color: lang === 'en' ? '#ffffff' : '#475569',
+                  background: lang === 'en' ? 'var(--color-btn-dark)' : 'transparent',
+                  color: lang === 'en' ? 'var(--color-btn-dark-text)' : 'var(--color-text-muted)',
                   fontWeight: 700,
                   fontSize: '0.85rem'
                 }}
@@ -512,6 +539,9 @@ export default function App() {
                 EN
               </button>
             </div>
+
+            {/* Dark Mode Toggle Button */}
+            <ThemeToggle theme={theme} onToggle={toggleTheme} lang={lang} />
           </div>
         </div>
       </header>
@@ -521,10 +551,10 @@ export default function App() {
         <div className="app-main-grid">
           {/* LEFT COLUMN: फसल चुनें (Select Crop) */}
           <div className="crop-sidebar-card">
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)', margin: '0 0 2px 0' }}>
               {t.selectCrop}
             </h2>
-            <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '18px' }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-dim)', marginBottom: '18px' }}>
               {t.selectCropSub}
             </p>
 
@@ -547,7 +577,7 @@ export default function App() {
                     <span style={{
                       fontSize: '0.92rem',
                       fontWeight: 700,
-                      color: '#111827',
+                      color: 'var(--color-text-main)',
                       marginTop: '6px'
                     }}>
                       {lang === 'hi' ? crop.name_hi : crop.name_en}
@@ -563,14 +593,14 @@ export default function App() {
             {/* Offline Status Banner */}
             {!isOnline && (
               <div style={{
-                background: '#fef3c7',
-                border: '1px solid #fde68a',
+                background: 'var(--color-tag-cached)',
+                border: '1px solid var(--color-hero-border)',
                 borderRadius: '12px',
                 padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                color: '#92400e',
+                color: 'var(--color-tag-cached-text)',
                 fontSize: '0.85rem',
                 fontWeight: 700
               }}>
@@ -587,10 +617,10 @@ export default function App() {
                   {renderCropIcon(activeCropObj.id, 56)}
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '2.1rem', fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1.1 }}>
+                  <h2 style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0, lineHeight: 1.1 }}>
                     {lang === 'hi' ? activeCropObj.name_hi : activeCropObj.name_en}
                   </h2>
-                  <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '4px 0 0 0', fontWeight: 500 }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', margin: '4px 0 0 0', fontWeight: 500 }}>
                     {new Date().toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
@@ -598,10 +628,10 @@ export default function App() {
 
               {/* Center: Big Price */}
               <div className="hero-price-box">
-                <div className="hero-price" style={{ fontSize: '2.9rem', fontWeight: 900, color: '#111827', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                <div className="hero-price" style={{ fontSize: '2.9rem', fontWeight: 900, color: 'var(--color-text-main)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   ₹{featuredPrice.toLocaleString('en-IN')}
                 </div>
-                <div style={{ fontSize: '0.92rem', color: '#6b7280', fontWeight: 600, marginTop: '4px' }}>
+                <div style={{ fontSize: '0.92rem', color: 'var(--color-text-dim)', fontWeight: 600, marginTop: '4px' }}>
                   {t.perQuintal} • (₹{featuredPerKg}/kg)
                 </div>
               </div>
@@ -627,11 +657,12 @@ export default function App() {
 
             {/* MANDIS SECTION: "आपके पास की मंडियाँ" (Nearby Mandis List) */}
             <div style={{
-              background: '#ffffff',
+              background: 'var(--color-surface)',
               borderRadius: 'var(--radius-lg)',
               border: '1px solid var(--color-card-border)',
               padding: '24px 28px',
-              boxShadow: 'var(--shadow-sm)'
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'background-color 0.25s ease, border-color 0.25s ease'
             }}>
               {/* Header row with Location Selector */}
               <div style={{
@@ -643,12 +674,12 @@ export default function App() {
                 gap: '12px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <LocationPin size={22} color="#14532d" />
+                  <LocationPin size={22} color={theme === 'dark' ? '#4ade80' : '#14532d'} />
                   <div>
-                    <h3 style={{ fontSize: '1.28rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+                    <h3 style={{ fontSize: '1.28rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
                       {t.nearMandis}
                     </h3>
-                    <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: 0 }}>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-dim)', margin: 0 }}>
                       {t.nearMandisSub}
                     </p>
                   </div>
@@ -660,18 +691,18 @@ export default function App() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-input-border)',
                     borderRadius: 'var(--radius-full)',
                     padding: '8px 18px',
                     fontSize: '0.9rem',
                     fontWeight: 700,
-                    color: '#111827',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                    color: 'var(--color-text-main)',
+                    boxShadow: 'var(--shadow-sm)'
                   }}>
-                    <LocationPin size={16} color="#14532d" />
+                    <LocationPin size={16} color={theme === 'dark' ? '#4ade80' : '#14532d'} />
                     <span>{exactCityStateText}</span>
-                    <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '4px' }}>⌵</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginLeft: '4px' }}>⌵</span>
                   </div>
                   <select
                     value={selectedState}
@@ -697,11 +728,11 @@ export default function App() {
 
               {/* Loading State */}
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-dim)' }}>
                   🌾 {lang === 'hi' ? 'ताज़ा मंडी भाव लोड हो रहे हैं...' : 'Loading verified market rates...'}
                 </div>
               ) : filteredRecords.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-dim)' }}>
                   🌾 {lang === 'hi' ? 'इस फसल/क्षेत्र में कोई भाव नहीं मिला।' : 'No market records found for this crop/area.'}
                 </div>
               ) : (
@@ -722,20 +753,20 @@ export default function App() {
                         {/* Mandi Name & Distance (paired with trend on mobile) */}
                         <div className="mandi-mobile-top">
                           <div>
-                            <h4 style={{ fontSize: '1.08rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0' }}>
+                            <h4 style={{ fontSize: '1.08rem', fontWeight: 800, color: 'var(--color-text-main)', margin: '0 0 2px 0' }}>
                               {mandiTitle}
                             </h4>
-                            <span style={{ fontSize: '0.84rem', color: '#6b7280', fontWeight: 500 }}>
+                            <span style={{ fontSize: '0.84rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>
                               📍 {record.distance_km === 0 ? (lang === 'hi' ? '0 किमी' : '0 km') : `${record.distance_km} किमी`}
                             </span>
                           </div>
 
                           {/* Trend */}
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#166534' }}>
+                            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
                               ▲ +₹{dummyDelta}
                             </div>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#166534' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary-light)' }}>
                               {t.upTrend}
                             </div>
                           </div>
@@ -743,10 +774,10 @@ export default function App() {
 
                         {/* Price Box */}
                         <div className="mandi-price-box">
-                          <div style={{ fontSize: '1.28rem', fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>
+                          <div style={{ fontSize: '1.28rem', fontWeight: 800, color: 'var(--color-text-main)', lineHeight: 1.2 }}>
                             ₹{record.modal_price.toLocaleString('en-IN')}
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>
                             {t.perQuintal} • (₹{(record.modal_price / 100).toFixed(2)}/kg)
                           </div>
                         </div>
@@ -762,9 +793,9 @@ export default function App() {
                             style={{
                               padding: '8px 14px',
                               borderRadius: 'var(--radius-full)',
-                              background: isSelected ? 'var(--color-btn-dark)' : '#f1f5f9',
-                              color: isSelected ? '#ffffff' : '#475569',
-                              border: isSelected ? '1px solid var(--color-btn-dark)' : '1px solid #cbd5e1',
+                              background: isSelected ? 'var(--color-btn-dark)' : 'var(--color-segmented-bg)',
+                              color: isSelected ? 'var(--color-btn-dark-text)' : 'var(--color-text-muted)',
+                              border: isSelected ? '1px solid var(--color-btn-dark)' : '1px solid var(--color-input-border)',
                               fontWeight: 700,
                               fontSize: '0.82rem',
                               cursor: 'pointer',
@@ -817,12 +848,12 @@ export default function App() {
               boxShadow: 'var(--shadow-sm)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <SpeakerWaveIcon size={26} color="#111827" />
+                <SpeakerWaveIcon size={26} color={theme === 'dark' ? '#f1f5f9' : '#111827'} />
                 <div>
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0' }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)', margin: '0 0 2px 0' }}>
                     {t.listenPrompt}
                   </h4>
-                  <p style={{ fontSize: '0.84rem', color: '#6b7280', margin: 0 }}>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--color-text-dim)', margin: 0 }}>
                     {t.listenSubSpecific(lang === 'hi' ? activeCropObj.name_hi : activeCropObj.name_en)}
                   </p>
                 </div>
@@ -835,7 +866,7 @@ export default function App() {
                   padding: '10px 24px',
                   borderRadius: 'var(--radius-full)',
                   background: 'var(--color-btn-dark)',
-                  color: '#ffffff',
+                  color: 'var(--color-btn-dark-text)',
                   fontWeight: 700,
                   fontSize: '0.95rem',
                   display: 'flex',
@@ -861,11 +892,11 @@ export default function App() {
           transform: 'translateX(-50%)',
           width: 'calc(100% - 40px)',
           maxWidth: '820px',
-          background: '#ffffff',
-          border: '2px solid #22c55e',
+          background: 'var(--color-floating-drawer-bg)',
+          border: '2px solid var(--color-floating-drawer-border)',
           borderRadius: '16px',
           padding: '14px 22px',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.14)',
+          boxShadow: 'var(--shadow-lg)',
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -876,12 +907,12 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '1.5rem' }}>⚖️</span>
             <div>
-              <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#14532d' }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
                 {selectedForCompare.length === 1 
                   ? (lang === 'hi' ? '1/2 मंडी चुनी गई — तुलना के लिए दूसरी मंडी चुनें' : '1/2 Mandi selected — Select a 2nd mandi to compare')
                   : (lang === 'hi' ? '2 मंडियां चुनी गईं — तुलना तैयार!' : '2 Mandis selected — Ready to compare!')}
               </div>
-              <div style={{ fontSize: '0.84rem', color: '#475569', marginTop: '2px', fontWeight: 600 }}>
+              <div style={{ fontSize: '0.84rem', color: 'var(--color-text-muted)', marginTop: '2px', fontWeight: 600 }}>
                 {selectedForCompare.map(r => lang === 'hi' ? (r.market_hi || r.market_en) : (r.market_en || r.market_hi)).join('  🆚  ')}
               </div>
             </div>
@@ -894,12 +925,12 @@ export default function App() {
                 style={{
                   padding: '10px 22px',
                   borderRadius: 'var(--radius-full)',
-                  background: '#15803d',
-                  color: '#ffffff',
+                  background: 'var(--color-btn-dark)',
+                  color: 'var(--color-btn-dark-text)',
                   fontWeight: 800,
                   fontSize: '0.92rem',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(21, 128, 61, 0.35)',
+                  boxShadow: '0 4px 12px rgba(34, 197, 94, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
@@ -908,7 +939,7 @@ export default function App() {
                 ⚡ {t.compareBtn}
               </button>
             ) : (
-              <span style={{ fontSize: '0.82rem', color: '#6b7280', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--color-text-dim)', fontStyle: 'italic' }}>
                 {lang === 'hi' ? 'एक और चुनें...' : 'Pick 1 more...'}
               </span>
             )}
@@ -918,12 +949,12 @@ export default function App() {
               style={{
                 padding: '7px 12px',
                 borderRadius: 'var(--radius-full)',
-                background: '#f1f5f9',
-                color: '#64748b',
+                background: 'var(--color-segmented-bg)',
+                color: 'var(--color-text-muted)',
                 fontSize: '0.8rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                border: '1px solid #cbd5e1'
+                border: '1px solid var(--color-input-border)'
               }}
             >
               ✕ {t.clearCompare}
@@ -943,13 +974,14 @@ export default function App() {
 
       {/* Footer */}
       <footer style={{
-        borderTop: '1px solid var(--color-card-border)',
+        borderTop: '1px solid var(--color-footer-border)',
         padding: '16px 0',
         textAlign: 'center',
         fontSize: '0.8rem',
-        color: '#6b7280',
-        background: '#ffffff',
-        marginTop: '30px'
+        color: 'var(--color-text-dim)',
+        background: 'var(--color-footer-bg)',
+        marginTop: '30px',
+        transition: 'background-color 0.25s ease, border-color 0.25s ease'
       }}>
         <div className="container">
           {t.appName} 🌾 • {lang === 'hi' ? 'कृषि मंत्रालय, भारत सरकार के आधिकारिक ओपन डेटा पर आधारित' : 'Powered by Open Government Data (data.gov.in) • Ministry of Agriculture'}

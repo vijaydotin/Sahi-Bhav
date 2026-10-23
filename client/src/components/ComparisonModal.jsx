@@ -133,8 +133,8 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(15, 23, 42, 0.55)',
-      backdropFilter: 'blur(6px)',
+      background: 'rgba(5, 12, 8, 0.75)',
+      backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -142,15 +142,15 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
       zIndex: 200
     }}>
       <div style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-card-border)',
         borderRadius: '20px',
         maxWidth: '820px',
         width: '100%',
         maxHeight: '90vh',
         overflowY: 'auto',
         padding: '28px',
-        boxShadow: '0 20px 48px rgba(0,0,0,0.15)',
+        boxShadow: 'var(--shadow-lg)',
         position: 'relative'
       }}>
         {/* Close Button */}
@@ -160,8 +160,8 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
             position: 'absolute',
             top: '20px',
             right: '20px',
-            background: '#f1f5f9',
-            color: '#475569',
+            background: 'var(--color-segmented-bg)',
+            color: 'var(--color-text-muted)',
             borderRadius: 'var(--radius-full)',
             width: '36px',
             height: '36px',
@@ -170,7 +170,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
             justifyContent: 'center',
             fontSize: '1.1rem',
             cursor: 'pointer',
-            border: '1px solid #e2e8f0'
+            border: '1px solid var(--color-input-border)'
           }}
         >
           ✕
@@ -178,10 +178,10 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
 
         {/* Title & Subtitle */}
         <div style={{ marginBottom: '22px' }}>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#111827', margin: '0 0 4px 0' }}>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main)', margin: '0 0 4px 0' }}>
             ⚖️ {lang === 'hi' ? 'मंडी तुलना व सही मुनाफ़ा कैलकुलेटर' : 'Mandi Comparison & Net Profit Engine'}
           </h2>
-          <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>
+          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', margin: 0 }}>
             {lang === 'hi' 
               ? 'परिवहन लागत व फसल मात्रा को जोड़कर वास्तविक जेब में आने वाले शुद्ध मुनाफ़े की गणना' 
               : 'Deterministic take-home profit calculated after transit distance and fuel expenses'}
@@ -197,86 +197,88 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
         }}>
           {/* Mandi A */}
           <div style={{
-            background: isAWinner ? '#f0fdf4' : '#f8fafc',
-            border: isAWinner ? '2px solid #22c55e' : '1.5px solid #e2e8f0',
+            background: isAWinner ? 'var(--color-badge-green)' : 'var(--color-stat-box-bg)',
+            border: isAWinner ? '2px solid var(--color-card-selected-border)' : '1.5px solid var(--color-card-border)',
             borderRadius: '16px',
             padding: '20px',
             position: 'relative',
-            boxShadow: isAWinner ? '0 4px 12px rgba(34, 197, 94, 0.12)' : 'none'
+            boxShadow: isAWinner ? '0 4px 12px rgba(34, 197, 94, 0.15)' : 'none'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>
                 {lang === 'hi' ? 'मंडी 1' : 'Mandi 1'}
               </span>
               {isAWinner && (
                 <span style={{
-                  background: '#dcfce7',
-                  color: '#15803d',
+                  background: 'var(--color-card-selected-bg)',
+                  color: 'var(--color-primary-light)',
                   fontSize: '0.75rem',
                   fontWeight: 800,
                   padding: '2px 8px',
-                  borderRadius: '999px'
+                  borderRadius: '999px',
+                  border: '1px solid var(--color-card-selected-border)'
                 }}>
                   🏆 {lang === 'hi' ? 'अधिक मुनाफ़ा' : 'Best Return'}
                 </span>
               )}
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '6px 0 2px 0' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', margin: '6px 0 2px 0' }}>
               {lang === 'hi' ? (mandiA.market_hi || mandiA.market_en) : (mandiA.market_en || mandiA.market_hi)}
             </h3>
-            <p style={{ color: '#64748b', fontSize: '0.82rem', marginBottom: '14px', fontWeight: 500 }}>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.82rem', marginBottom: '14px', fontWeight: 500 }}>
               📍 {mandiA.district}, {mandiA.state} • ~{distA} km
             </p>
-            <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', lineHeight: 1.1 }}>
-              ₹{priceA.toLocaleString('en-IN')}<span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}> / {lang === 'hi' ? 'क्विंटल' : 'qtl'}</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-text-main)', lineHeight: 1.1 }}>
+              ₹{priceA.toLocaleString('en-IN')}<span style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', fontWeight: 600 }}> / {lang === 'hi' ? 'क्विंटल' : 'qtl'}</span>
             </div>
-            <div style={{ fontSize: '0.88rem', color: '#15803d', fontWeight: 700, marginTop: '4px' }}>
+            <div style={{ fontSize: '0.88rem', color: 'var(--color-primary-light)', fontWeight: 700, marginTop: '4px' }}>
               ≈ ₹{(priceA / 100).toFixed(2)} / {lang === 'hi' ? 'किलो (kg)' : 'kg'}
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', marginTop: '6px' }}>
               {mandiA.commodity_hi || mandiA.commodity_en} ({mandiA.variety || 'Standard'})
             </div>
           </div>
 
           {/* Mandi B */}
           <div style={{
-            background: !isAWinner ? '#f0fdf4' : '#f8fafc',
-            border: !isAWinner ? '2px solid #22c55e' : '1.5px solid #e2e8f0',
+            background: !isAWinner ? 'var(--color-badge-green)' : 'var(--color-stat-box-bg)',
+            border: !isAWinner ? '2px solid var(--color-card-selected-border)' : '1.5px solid var(--color-card-border)',
             borderRadius: '16px',
             padding: '20px',
             position: 'relative',
-            boxShadow: !isAWinner ? '0 4px 12px rgba(34, 197, 94, 0.12)' : 'none'
+            boxShadow: !isAWinner ? '0 4px 12px rgba(34, 197, 94, 0.15)' : 'none'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>
                 {lang === 'hi' ? 'मंडी 2' : 'Mandi 2'}
               </span>
               {!isAWinner && (
                 <span style={{
-                  background: '#dcfce7',
-                  color: '#15803d',
+                  background: 'var(--color-card-selected-bg)',
+                  color: 'var(--color-primary-light)',
                   fontSize: '0.75rem',
                   fontWeight: 800,
                   padding: '2px 8px',
-                  borderRadius: '999px'
+                  borderRadius: '999px',
+                  border: '1px solid var(--color-card-selected-border)'
                 }}>
                   🏆 {lang === 'hi' ? 'अधिक मुनाफ़ा' : 'Best Return'}
                 </span>
               )}
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '6px 0 2px 0' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', margin: '6px 0 2px 0' }}>
               {lang === 'hi' ? (mandiB.market_hi || mandiB.market_en) : (mandiB.market_en || mandiB.market_hi)}
             </h3>
-            <p style={{ color: '#64748b', fontSize: '0.82rem', marginBottom: '14px', fontWeight: 500 }}>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.82rem', marginBottom: '14px', fontWeight: 500 }}>
               📍 {mandiB.district}, {mandiB.state} • ~{distB} km
             </p>
-            <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', lineHeight: 1.1 }}>
-              ₹{priceB.toLocaleString('en-IN')}<span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}> / {lang === 'hi' ? 'क्विंटल' : 'qtl'}</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-text-main)', lineHeight: 1.1 }}>
+              ₹{priceB.toLocaleString('en-IN')}<span style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', fontWeight: 600 }}> / {lang === 'hi' ? 'क्विंटल' : 'qtl'}</span>
             </div>
-            <div style={{ fontSize: '0.88rem', color: '#15803d', fontWeight: 700, marginTop: '4px' }}>
+            <div style={{ fontSize: '0.88rem', color: 'var(--color-primary-light)', fontWeight: 700, marginTop: '4px' }}>
               ≈ ₹{(priceB / 100).toFixed(2)} / {lang === 'hi' ? 'किलो (kg)' : 'kg'}
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', marginTop: '6px' }}>
               {mandiB.commodity_hi || mandiB.commodity_en} ({mandiB.variety || 'Standard'})
             </div>
           </div>
@@ -284,8 +286,8 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
 
         {/* Inputs row: Quantity & Transport Cost */}
         <div style={{
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
+          background: 'var(--color-stat-box-bg)',
+          border: '1px solid var(--color-card-border)',
           borderRadius: '16px',
           padding: '18px 20px',
           marginBottom: '20px',
@@ -294,7 +296,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
           gap: '16px'
         }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '8px' }}>
               🌾 {lang === 'hi' ? `फसल मात्रा: ${quantityQtl} क्विंटल (${(quantityQtl * 100).toLocaleString('en-IN')} kg)` : `Harvest Quantity: ${quantityQtl} Quintals`}
             </label>
             <input
@@ -307,9 +309,9 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: '8px',
-                background: '#ffffff',
-                border: '1.5px solid #cbd5e1',
-                color: '#111827',
+                background: 'var(--color-input-bg)',
+                border: '1.5px solid var(--color-input-border)',
+                color: 'var(--color-text-main)',
                 fontSize: '1.05rem',
                 fontWeight: 700
               }}
@@ -317,7 +319,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '8px' }}>
               🚚 {lang === 'hi' ? 'अनुमानित परिवहन खर्च (₹ / km):' : 'Estimated Transit Expense (₹ / km):'}
             </label>
             <input
@@ -330,9 +332,9 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: '8px',
-                background: '#ffffff',
-                border: '1.5px solid #cbd5e1',
-                color: '#111827',
+                background: 'var(--color-input-bg)',
+                border: '1.5px solid var(--color-input-border)',
+                color: 'var(--color-text-main)',
                 fontSize: '1.05rem',
                 fontWeight: 700
               }}
@@ -342,8 +344,8 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
 
         {/* ✨ Gemini AI Advisor Box */}
         <div style={{
-          background: '#f0fdf4',
-          border: '1.5px solid #bbf7d0',
+          background: 'var(--color-hero-bg)',
+          border: '1.5px solid var(--color-hero-border)',
           borderRadius: '16px',
           padding: '18px 22px',
           marginBottom: '20px'
@@ -352,7 +354,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
             <span style={{
               fontSize: '0.85rem',
               fontWeight: 800,
-              color: '#15803d',
+              color: 'var(--color-primary-light)',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
@@ -366,8 +368,8 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
               style={{
                 padding: '6px 14px',
                 borderRadius: 'var(--radius-full)',
-                background: isSpeaking ? '#ef4444' : '#15803d',
-                color: '#ffffff',
+                background: isSpeaking ? '#ef4444' : 'var(--color-btn-dark)',
+                color: 'var(--color-btn-dark-text)',
                 fontSize: '0.82rem',
                 fontWeight: 700,
                 display: 'flex',
@@ -383,7 +385,7 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
 
           <p style={{
             fontSize: '0.94rem',
-            color: '#14532d',
+            color: 'var(--color-text-main)',
             margin: 0,
             lineHeight: 1.6,
             fontWeight: 500,
@@ -397,8 +399,8 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
 
         {/* Decision & Financial Breakdown Banner */}
         <div style={{
-          background: '#dcfce7',
-          border: '1.5px solid #86efac',
+          background: 'var(--color-badge-green)',
+          border: '1.5px solid var(--color-card-selected-border)',
           borderRadius: '16px',
           padding: '18px 22px',
           marginBottom: '22px',
@@ -409,22 +411,22 @@ export default function ComparisonModal({ mandis, lang, onClose }) {
           gap: '12px'
         }}>
           <div>
-            <span style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-badge-green-text)', fontWeight: 700, textTransform: 'uppercase' }}>
               {lang === 'hi' ? 'सही निर्णय (अनुशंसित मंडी)' : 'Recommended Market'}
             </span>
-            <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#14532d', marginTop: '2px' }}>
+            <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-text-main)', marginTop: '2px' }}>
               🏆 {winnerName}
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#166534', marginTop: '4px', fontWeight: 600 }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-badge-green-text)', marginTop: '4px', fontWeight: 600 }}>
               ⚖️ {lang === 'hi' ? 'भाव अंतर' : 'Price Delta'}: ₹{Math.abs(priceDiffPerQtl)}/qtl • 📍 {lang === 'hi' ? 'दूरी अंतर' : 'Distance Delta'}: ~{distDiff} km
             </div>
           </div>
 
           <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-badge-green-text)', fontWeight: 700, textTransform: 'uppercase' }}>
               {lang === 'hi' ? 'अतिरिक्त शुद्ध मुनाफ़ा' : 'Net Take-Home Gain'}
             </span>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: '#15803d', lineHeight: 1.1 }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: 'var(--color-primary-light)', lineHeight: 1.1 }}>
               +₹{Math.abs(netGain).toLocaleString('en-IN')}
             </div>
           </div>
