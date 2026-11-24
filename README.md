@@ -60,7 +60,7 @@ graph TD
         SyncManager["Sync & Cache Manager"]
         PriceAPI["Agmarknet / Mandi Rate Service"]
         MSPData["Government MSP Benchmarks"]
-    end
+    end o
 
     User -->|Interacts| UI
     UI --> CalcEngine
